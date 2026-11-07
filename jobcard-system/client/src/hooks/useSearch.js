@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
+import { rememberSearchView } from '../utils/sessionMemory';
 
 const INITIAL_FILTERS = {
   // Jobs
@@ -26,11 +27,13 @@ const INITIAL_FILTERS = {
   jobNumber: '',
 };
 
-export default function useSearch(role) {
-  const [q, setQ] = useState('');
-  const [scope, setScope] = useState('all');
-  const [filters, setFilters] = useState(INITIAL_FILTERS);
-  const [page, setPage] = useState(1);
+// `initial` is the search to open on ({ q, scope, filters, page }, any part may be
+// missing) — words handed over from the job list, or the search being returned to.
+export default function useSearch(role, initial = null) {
+  const [q, setQ] = useState(initial?.q || '');
+  const [scope, setScope] = useState(initial?.scope || 'all');
+  const [filters, setFilters] = useState(() => ({ ...INITIAL_FILTERS, ...(initial?.filters || {}) }));
+  const [page, setPage] = useState(initial?.page || 1);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState([]);
@@ -134,6 +137,11 @@ export default function useSearch(role) {
 
     return () => clearTimeout(timer);
   }, [q, scope, JSON.stringify(filters), page, refreshKey]);
+
+  // Keep the search so Back from a result returns to it (cleared on sign-out).
+  useEffect(() => {
+    rememberSearchView({ q, scope, filters, page });
+  }, [q, scope, filters, page]);
 
   // Typing a new search must jump back to the first page, the same way
   // changing a filter does — otherwise a fresh search runs against whatever

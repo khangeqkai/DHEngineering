@@ -102,3 +102,13 @@
   border-radius: var(--radius-sm);
   padding: 0 var(--space-0-5);
 }
+
+/* A contact result with its "Jobs for this customer" button beside it. */
+.search-preview-row { display: flex; align-items: center; gap: var(--gap-tight); border-bottom: 1px solid var(--border-color); }
+.search-preview-row:last-child { border-bottom: none; }
+.search-preview-row .search-preview-item { flex: 1; width: auto; border-bottom: none; }
+.search-preview-row .search-customer-link { flex-shrink: 0; }
+.search-overdue-label { display: block; font-size: var(--text-xs); margin-top: var(--space-1); }
+/* "Jobs for this customer": a plain text link, not a button, so it doesn't repeat as a box on every row. */
+.search-customer-link { background: none; border: none; padding: 0; font-family: inherit; font-size: var(--text-sm); font-weight: var(--font-regular); color: var(--accent-text); cursor: pointer; white-space: nowrap; }
+.search-customer-link:hover { text-decoration: underline; }

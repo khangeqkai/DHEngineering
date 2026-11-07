@@ -5,7 +5,7 @@ import { STATUS_SORT_ORDER } from '../jobcard/constants';
 import { formatDate, pluralize } from '../../utils/formatters';
 import { onTimeTone, ON_TIME_RULE, daysLate } from './thresholds';
 
-export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading = false }) {
+export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading = false, onOpenJob }) {
   const onTimeRate = summary.onTimeRate;
   const hasOnTimeData = onTimeRate !== null && onTimeRate !== undefined;
 
@@ -47,7 +47,7 @@ export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading 
               <div className="stats-row">
                 <span className="stats-row-label">Finished on or before due date:</span>
                 <strong className="is-good">
-                  {pluralize(summary.onTimeJobsCount ?? 0, 'job')} {hasOnTimeData ? `(${onTimeRate}%)` : ''}
+                  {pluralize(summary.onTimeJobsCount ?? 0, 'job')} {hasOnTimeData ? `(${onTimeRate}% of ${(summary.onTimeJobsCount ?? 0) + (summary.lateJobsCount ?? 0)} judged)` : ''}
                 </strong>
               </div>
               <div className="distribution-bar-bg">
@@ -125,7 +125,16 @@ export default function OnTimeTab({ summary = {}, delayedJobsList = [], loading 
                 key: 'jobNumber',
                 label: 'Job Number',
                 sortable: true,
-                render: (val) => <strong>{val}</strong>
+                render: (val, row) => (
+                  <button
+                    type="button"
+                    className="row-link-btn"
+                    aria-label={`Open job ${val}`}
+                    onClick={() => onOpenJob?.(row.id)}
+                  >
+                    {val}
+                  </button>
+                )
               },
               {
                 key: 'companyName',

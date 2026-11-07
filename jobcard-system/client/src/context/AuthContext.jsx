@@ -4,6 +4,7 @@ import { api, SIGNED_OUT_MESSAGES } from '../services/api';
 import { useInactivityTimer } from '../hooks/useInactivityTimer';
 import { can } from '../utils/roles';
 import { setOpenMentionsMarker } from './openMentionsMarker';
+import { forgetSessionMemory } from '../utils/sessionMemory';
 import { INACTIVITY_MINUTES } from '../../../server/src/shared/settingsRules';
 
 const AuthContext = createContext(null);
@@ -23,11 +24,23 @@ const SESSION_POLL_MS = 5000;
 // like the Sign Out button is stuck.
 const BEFORE_LOGOUT_GRACE_MS = 3000;
 
+// Everything held for the signed-in person that must not reach the next one.
+// Every way a session ends — Sign Out, the idle sign-out, a page brought back
+// from the browser's cache, the office changing or ending their access — goes
+// through here, so a new thing to forget is added in this one place.
+function endSession() {
+  setOpenMentionsMarker(null);
+  forgetSessionMemory();
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false); // No token check needed on mount
   const [inactivityTimeoutMs, setInactivityTimeoutMs] = useState(INACTIVITY_MINUTES.defaultValue * 60 * 1000);
   const pollRef = useRef(null);
+  // The role the screens are showing right now, so a role swap can tell it changed.
+  const userRoleRef = useRef(null);
+  userRoleRef.current = user?.role ?? null;
   const beforeLogoutCallbacksRef = useRef([]);
   const unsavedWorkRef = useRef([]);
 
@@ -70,7 +83,7 @@ export function AuthProvider({ children }) {
     // run once that last-moment work has landed. It never rejects.
     const cancelSession = api.beginLogout();
     setUser(null);
-    setOpenMentionsMarker(null);
+    endSession();
     Promise.race([
       Promise.allSettled(pending),
       new Promise(resolve => setTimeout(resolve, BEFORE_LOGOUT_GRACE_MS))
@@ -98,7 +111,7 @@ export function AuthProvider({ children }) {
       clearInterval(pollRef.current);
       api.setToken(null);
       setUser(null);
-      setOpenMentionsMarker(null);
+      endSession();
       toast.error(SIGNED_OUT_MESSAGES[code] || 'You were signed out. Please sign in again.');
     });
     return () => api.setOnSessionInvalidated(null);
@@ -117,6 +130,9 @@ export function AuthProvider({ children }) {
   // profile: an in-flight preference save (updatePreferences) would be reverted
   // by a profile that was fetched just before it landed.
   const applyIdentity = useCallback(({ role, name } = {}) => {
+    // A new role changes what the person may see, so the job list and search views
+    // remembered under the old one are dropped (same as a sign-out does).
+    if (role && role !== userRoleRef.current) forgetSessionMemory();
     setUser(prev => {
       if (!prev) return prev;
       const next = { ...prev };
@@ -182,6 +198,7 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (username, password, homeAccessCode) => {
     const response = await api.login(username, password, homeAccessCode);
     api.setToken(response.token);
+    forgetSessionMemory();
 
     // Fetch full user profile to get preferences
     const fullUser = await api.getMe();

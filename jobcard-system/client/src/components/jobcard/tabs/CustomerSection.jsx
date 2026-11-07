@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { toTitleCase } from '../../../utils/formatters';
 import FieldError from '../../common/FieldError';
@@ -42,6 +42,10 @@ export default function CustomerSection({
   // Which customer "Add someone new…" was chosen for. Picking another customer
   // starts that customer's Contact box fresh, back on "Choose a contact…".
   const [addingNewFor, setAddingNewFor] = useState(null);
+  // A new job opens with the cursor already in the Company box, so a phone call can be
+  // typed straight in. That first, automatic focus opens no suggestion list — it appears
+  // once the person types. Any later focus (a click, a Tab back) behaves as usual.
+  const firstFocusIsAutomatic = useRef(!isEdit);
 
   if (isEdit) {
     return (
@@ -108,7 +112,16 @@ export default function CustomerSection({
                   noteCompanyTyping();
                   handleContactFieldChange('companyName', e.target.value);
                 }}
-                onFocus={handleFieldFocus}
+                autoFocus={!isEdit}
+                onMouseDown={() => { firstFocusIsAutomatic.current = false; }}
+                onFocus={() => {
+                  if (firstFocusIsAutomatic.current) {
+                    firstFocusIsAutomatic.current = false;
+                    handleFieldFocus({ quiet: true });
+                    return;
+                  }
+                  handleFieldFocus();
+                }}
                 onBlur={(e) => {
                   handleFieldBlur();
                   // The pick just fired its own write; this blur's e.target.value

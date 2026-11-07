@@ -56,10 +56,13 @@ function likeTerm(raw) {
 // jobs search, so the two can never drift apart. `like` is the already-wildcarded
 // search term; returns the WHERE fragment and its matching params in order.
 function jobSearchMatch(canManage, like) {
+  // A worker's name on the job matches too, as it does in the job list's own search box
+  // — the person's shown name (their name, else their username), the same as the list.
+  const assignee = `j.id IN (SELECT ja.jobcard_id FROM job_assignees ja JOIN users au ON au.id = ja.user_id WHERE ${DISPLAY_NAME_SQL('au')} LIKE ? ESCAPE '\\')`;
   const sql = canManage
-    ? "(j.job_number LIKE ? ESCAPE '\\' OR j.description LIKE ? ESCAPE '\\' OR j.company_name LIKE ? ESCAPE '\\' OR j.contact_name LIKE ? ESCAPE '\\' OR j.po_number LIKE ? ESCAPE '\\')"
-    : "(j.job_number LIKE ? ESCAPE '\\' OR j.description LIKE ? ESCAPE '\\')";
-  const params = canManage ? [like, like, like, like, like] : [like, like];
+    ? `(j.job_number LIKE ? ESCAPE '\\' OR j.description LIKE ? ESCAPE '\\' OR j.company_name LIKE ? ESCAPE '\\' OR j.contact_name LIKE ? ESCAPE '\\' OR j.po_number LIKE ? ESCAPE '\\' OR ${assignee})`
+    : `(j.job_number LIKE ? ESCAPE '\\' OR j.description LIKE ? ESCAPE '\\' OR ${assignee})`;
+  const params = canManage ? [like, like, like, like, like, like] : [like, like, like];
   return { sql, params };
 }
 
@@ -93,6 +96,8 @@ function formatJob(row, assignees, canManage) {
     companyName,
     contactName,
     status: row.status,
+    // The status a flagged job stands at — what the late mark judges it by.
+    previousStatus: row.previous_status ?? null,
     priority: row.priority,
     qualityLevel: row.quality_level,
     dueDate: row.due_date,

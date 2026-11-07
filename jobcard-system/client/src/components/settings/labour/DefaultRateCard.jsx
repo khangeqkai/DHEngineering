@@ -3,7 +3,7 @@ import FieldError from '../../common/FieldError';
 // The company-wide default hourly rate. It seeds each NEW job's base rate at creation;
 // from then on the job owns its rate, so changing this never moves an existing job
 // (the costing screen offers a one-tap "use company default" link to re-apply it).
-export default function DefaultRateCard({ defaultRate, setDefaultRate, onSave, saving, error }) {
+export default function DefaultRateCard({ defaultRate, setDefaultRate, onSave, saving, error, dirty }) {
   return (
     <div className="card full-width">
       <div className="card-header">
@@ -42,6 +42,7 @@ export default function DefaultRateCard({ defaultRate, setDefaultRate, onSave, s
           <button type="button" className="btn btn-primary" onClick={onSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save default rate'}
           </button>
+          {dirty && <span className="unsaved-pill"><span className="unsaved-pill-dot" aria-hidden="true" />Unsaved changes</span>}
         </div>
       </div>
     </div>

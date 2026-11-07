@@ -8,6 +8,10 @@ import { handleDialogTab } from './dialogKeys';
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+// The boxes a window can start in: typing boxes only, not tick boxes or buttons.
+const FIRST_BOX_SELECTOR =
+  'input:not([disabled]):not([readonly]):not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="button"]):not([type="submit"]), textarea:not([disabled]):not([readonly])';
+
 export default function BottomSheet({
   isOpen,
   onClose,
@@ -23,6 +27,9 @@ export default function BottomSheet({
   // right to make room for the aside, and on screens too narrow for both, the aside
   // overlaps the window's left edge instead.
   aside = null,
+  // Whether a window with no box focused already puts the cursor in its first typing
+  // box. The job window turns this off: it has its own focus rules and many boxes.
+  focusFirstField = true,
   children
 }) {
   const dialogRef = useRef(null);
@@ -65,7 +72,18 @@ export default function BottomSheet({
   // Move focus into the dialog so the first Tab lands on a real field
   // rather than the close button (first in the DOM) or the page behind.
   // Handing focus back on close is the modal stack's job, not this window's.
-  useFocusWhenTop(modalId, isOpen, () => dialogRef.current?.focus());
+  // A box that took focus itself on opening (autoFocus) wins; otherwise the first typing
+  // box in the body does; the frame itself only when the window holds no box to type in.
+  useFocusWhenTop(modalId, isOpen, () => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const now = document.activeElement;
+    if (now && now !== dialog && dialog.contains(now)) return;
+    const firstBox = focusFirstField
+      ? Array.from(dialog.querySelectorAll(FIRST_BOX_SELECTOR)).find((el) => el.offsetParent !== null && !el.closest('[inert]'))
+      : null;
+    (firstBox || dialog).focus();
+  });
 
   // Keydown handling (Escape close + Tab trap) — re-bound if the handler changes.
   useEffect(() => {

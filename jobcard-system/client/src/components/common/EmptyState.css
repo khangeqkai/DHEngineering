@@ -36,6 +36,11 @@
   margin-top: var(--space-4);
 }
 
+/* A second button under the first sits close to it, not a full gap away. */
+.empty-state-action--secondary {
+  margin-top: var(--gap-tight);
+}
+
 /* The small version, for a side window (comments, job history) where the full
    one's large icon and heading would crowd the panel. Used as a class on its
    own: an optional small drawn icon, then the message and any button. */

@@ -11,19 +11,18 @@ import DataTable from './common/DataTable';
 import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import EntityActivityLog from './common/EntityActivityLog';
+import ResetPinWindow from './ResetPinWindow';
 import { useConfirmDialog } from '../hooks/useConfirmDialog';
 import { useManagedListPage } from '../hooks/useManagedListPage';
 import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from '../hooks/useFieldErrors';
 import { isManagement, can } from '../utils/roles';
+import { ROLE_LABELS } from '../utils/roleLabels';
 import FieldError from './common/FieldError';
 import { useLatestCallback } from '../hooks/useLatestCallback';
 import { changedFields } from '../utils/changedFields';
 
 // Which box on the form each field named in a server refusal belongs to.
 const USER_FORM_BOXES = { username: 'username', password: 'password', name: 'name', email: 'email' };
-
-// What each stored role is called on screen (the stored values stay user/manager/admin).
-const ROLE_LABELS = { user: 'Worker', manager: 'Manager', admin: 'Admin' };
 
 // The line under the Role box, changing with the role picked.
 const ROLE_HELP = {
@@ -71,11 +70,12 @@ export default function UserManagement() {
     role: 'user'
   });
   const [saving, setSaving] = useState(false);
+  // The person whose PIN is being reset (the Reset PIN window is open on them).
+  const [resettingUser, setResettingUser] = useState(null);
   const { dialogState, showConfirm, handleCancel, handleConfirm } = useConfirmDialog();
   const { setFieldErrors, clearAll: resetFieldErrors, groupClass, errorFor, fieldProps, errorProps } = useFieldErrors(
     (name) => formData[name]
   );
-  const editingSelf = Boolean(editingUser && editingUser.id === currentUser?.id);
   // The only active admin can't be demoted (the server refuses it too), so the box
   // says so up front instead of letting the person find out on Save. The list always
   // holds every active account, so counting from it is enough.
@@ -117,18 +117,20 @@ export default function UserManagement() {
       return;
     }
 
-    // Client-side password validation
-    if (formData.password) {
-      const passwordError = validatePassword(formData.password);
-      if (passwordError) {
-        setFieldErrors({ password: passwordError });
+    // A new account needs a PIN (an existing one's PIN is changed with Reset PIN).
+    if (!editingUser) {
+      if (formData.password) {
+        const passwordError = validatePassword(formData.password);
+        if (passwordError) {
+          setFieldErrors({ password: passwordError });
+          scrollFieldIntoView('password');
+          return;
+        }
+      } else {
+        setFieldErrors({ password: 'Enter a 4-digit PIN.' });
         scrollFieldIntoView('password');
         return;
       }
-    } else if (!editingUser) {
-      setFieldErrors({ password: 'Enter a 4-digit PIN.' });
-      scrollFieldIntoView('password');
-      return;
     }
 
     setSaving(true);
@@ -158,7 +160,7 @@ export default function UserManagement() {
         await api.createUser(payload);
       }
       // The own-access-level message above already confirms the save.
-      if (!ownNewRole) toast.success('User updated');
+      if (!ownNewRole) toast.success(editingUser ? 'User updated' : 'User added');
 
       // Demoting yourself out of management puts this page out of reach: the
       // route guard is about to move us off it and the reload would be refused,
@@ -284,32 +286,25 @@ export default function UserManagement() {
                 <FieldError {...errorProps('username')} message={errorFor('username')} />
               </div>
 
-              {/* Your own PIN is changed in Settings, where the current one is
-                  asked for first — the server refuses it here. */}
-              <div className={groupClass('password')}>
-                <label htmlFor="password">
-                  PIN {editingUser ? '(leave blank to keep current)' : '*'}
-                </label>
-                {editingSelf ? (
-                  <p className="field-note">Change your own PIN in Settings &gt; Change PIN.</p>
-                ) : (
-                  <>
-                    <input
-                      type="password"
-                      inputMode="numeric"
-                      maxLength={4}
-                      {...fieldProps('password')}
-                      value={formData.password}
-                      onChange={(e) => {
-                        setFormData({ ...formData, password: e.target.value.replace(/\D/g, '').slice(0, 4) });
-                      }}
-                      placeholder="4 digits"
-                    />
-                    <p className="field-hint">4 digits, numbers only.</p>
-                    <FieldError {...errorProps('password')} message={errorFor('password')} />
-                  </>
-                )}
-              </div>
+              {/* An existing account's PIN is changed with Reset PIN on its row. */}
+              {!editingUser && (
+                <div className={groupClass('password')}>
+                  <label htmlFor="password">PIN *</label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    {...fieldProps('password')}
+                    value={formData.password}
+                    onChange={(e) => {
+                      setFormData({ ...formData, password: e.target.value.replace(/\D/g, '').slice(0, 4) });
+                    }}
+                    placeholder="4 digits"
+                  />
+                  <p className="field-hint">4 digits, numbers only.</p>
+                  <FieldError {...errorProps('password')} message={errorFor('password')} />
+                </div>
+              )}
             </div>
 
             <div className="form-row">
@@ -431,9 +426,14 @@ export default function UserManagement() {
                     {row.id !== currentUser?.id && !(row.role === 'admin' && !canManageAdmins) && (
                       <>
                         {row.active ? (
-                          <button className="btn btn-warning btn-sm" disabled={pendingId === row.id} onClick={(e) => { e.stopPropagation(); handleArchive(row); }}>
-                            <Archive size={14} /> {pendingId === row.id ? 'Archiving…' : 'Archive'}
-                          </button>
+                          <>
+                            <button type="button" className="row-link-btn" disabled={pendingId === row.id} onClick={(e) => { e.stopPropagation(); setResettingUser(row); }}>
+                              Reset PIN
+                            </button>
+                            <button className="btn btn-warning btn-sm" disabled={pendingId === row.id} onClick={(e) => { e.stopPropagation(); handleArchive(row); }}>
+                              <Archive size={14} /> {pendingId === row.id ? 'Archiving…' : 'Archive'}
+                            </button>
+                          </>
                         ) : (
                           <button className="btn btn-success btn-sm" disabled={pendingId === row.id} onClick={(e) => { e.stopPropagation(); handleRestore(row); }}>
                             <ArchiveRestore size={14} /> {pendingId === row.id ? 'Restoring…' : 'Restore'}
@@ -466,6 +466,12 @@ export default function UserManagement() {
           />
         </div>
       </div>
+
+      <ResetPinWindow
+        user={resettingUser}
+        onClose={() => setResettingUser(null)}
+        onDone={() => bumpActivity()}
+      />
 
       <EntityActivityLog
         entityType="user"

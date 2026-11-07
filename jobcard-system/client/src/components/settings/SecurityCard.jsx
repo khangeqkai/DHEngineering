@@ -6,7 +6,7 @@ export default function SecurityCard({ s }) {
   const jobNumberNextError = s.errorFor('jobNumberNext');
   return (
     <>
-      <div className="card full-width">
+      <div className="card">
         <div className="card-header">
           <h2>Automatic sign-out</h2>
         </div>
@@ -46,7 +46,7 @@ export default function SecurityCard({ s }) {
         </div>
       </div>
 
-      <div className="card full-width">
+      <div className="card">
         <div className="card-header">
           <h2>Job card numbering</h2>
         </div>

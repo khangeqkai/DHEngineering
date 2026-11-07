@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Info, Lock, RotateCcw } from 'lucide-react';
+import { AlertTriangle, Info, Lock, RotateCcw } from 'lucide-react';
 import CostingBreakdown from './CostingBreakdown';
 import FieldError from '../../common/FieldError';
 import { formatMoney } from '../../../utils/formatters';
@@ -94,6 +94,28 @@ export default function CostingTab({
       </div>
     );
   }
+
+  // Two different reasons the hours above may not be the final figure, said right on
+  // the Labour section whether or not the "what this job used" panel is open. A running
+  // clock's time is NOT in the hours yet; a clock the server stopped is IN them, but its
+  // worker hasn't said when they really finished. Both read from the job's logged time,
+  // which the job window reloads whenever a clock starts, stops or is confirmed.
+  const runningTimers = (timeEntries || []).filter(e => !e.endTime).length;
+  const waitingNames = [...new Set(
+    (timeEntries || []).filter(e => e.finishUnconfirmed).map(e => e.userName).filter(Boolean)
+  )];
+  const waitingCount = (timeEntries || []).filter(e => e.finishUnconfirmed).length;
+  // One line for both facts: only the parts that apply, names joined.
+  const joinNames = (names) => names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  const runningPart = runningTimers > 0 ? `${runningTimers === 1 ? '1 timer' : `${runningTimers} timers`} still running` : '';
+  const waitingPart = waitingCount > 0
+    ? (waitingNames.length > 0
+        ? `${joinNames(waitingNames)} ${waitingNames.length === 1 ? "hasn't" : "haven't"} confirmed a finish`
+        : 'a worker hasn\'t confirmed a finish')
+    : '';
+  const hoursWarning = waitingPart
+    ? `${[runningPart, waitingPart].filter(Boolean).join(' and ')}. These hours may change.`
+    : `${runningPart}, so ${runningTimers === 1 ? 'its' : 'their'} time isn't in these hours yet.`;
 
   const totals = calculateCostingTotals();
   const baseRate = Number(costingForm.labourRate) || 0;
@@ -431,6 +453,16 @@ export default function CostingTab({
             </span>
           </div>
 
+          {(runningTimers > 0 || waitingCount > 0) && (
+            <p className="costing-hours-warning">
+              <AlertTriangle size={14} aria-hidden="true" />
+              <span>{hoursWarning}</span>
+              {!showBreakdown && (
+                <button type="button" className="btn-link" onClick={() => setShowBreakdown(true)}>Show</button>
+              )}
+            </p>
+          )}
+
           <div className="ledger-head" aria-hidden="true">
             <span>When worked</span>
             <span>Hours</span>
@@ -471,21 +503,21 @@ export default function CostingTab({
           </div>
           {costRow({
             title: 'Special labour', noteName: 'labourSpecialDescription',
-            placeholder: 'e.g. Weekend shift to hit the shutdown date',
+            placeholder: 'What the extra shift was for',
             first: 'labourSpecialHours', firstMark: { suffix: 'h' }, op: '×',
             second: 'labourSpecialRate', secondMark: { prefix: '$' },
             total: totals.labourSpecialTotal
           })}
           {costRow({
             title: 'Materials', noteName: 'materialsDescription',
-            placeholder: 'e.g. 316 stainless bar supplied for 4 parts',
+            placeholder: 'What the material is for',
             first: 'materialsCost', firstMark: { prefix: '$' }, op: '+',
             second: 'materialsProfitPercent', secondMark: { suffix: '%' },
             total: totals.materialsTotal
           })}
           {costRow({
             title: 'Subcontractor', noteName: 'subcontractorDescription',
-            placeholder: 'e.g. Hard chrome plating and freight both ways',
+            placeholder: 'What the outside work is for',
             first: 'subcontractorCost', firstMark: { prefix: '$' }, op: '+',
             second: 'subcontractorProfitPercent', secondMark: { suffix: '%' },
             total: totals.subcontractorTotal

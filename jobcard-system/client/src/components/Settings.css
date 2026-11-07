@@ -208,3 +208,17 @@
     flex-wrap: wrap;
   }
 }
+
+/* The account facts sit under the Change PIN row. */
+.setting-item + .info-list {
+  margin-top: var(--gap-group);
+}
+
+/* Printers sit under the version facts inside "About this computer". */
+.settings-printers {
+  margin-top: var(--gap-group);
+}
+
+.settings-printers .setting-label {
+  margin-bottom: var(--gap-field);
+}

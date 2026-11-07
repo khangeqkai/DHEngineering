@@ -19,6 +19,9 @@
 }
 
 .eal-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap-field);
   padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid var(--border-color);
   transition: background var(--duration-instant) ease;
@@ -32,92 +35,88 @@
   background: var(--surface-inset);
 }
 
-.eal-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-tight);
-  flex-wrap: wrap;
-}
-
-.eal-user {
-  font-weight: var(--font-bold);
-  font-size: var(--text-sm);
-}
-
-.eal-action {
-  font-weight: var(--font-bold);
-  text-transform: capitalize;
-  font-size: var(--text-xs);
-}
-
-.eal-target {
-  font-size: var(--text-sm);
-  color: var(--text-primary);
-  font-weight: var(--font-regular);
-}
-
-.eal-time {
-  color: var(--text-secondary);
-  font-size: var(--text-xs);
-  margin-left: auto;
-}
-
-.eal-changes {
+.eal-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
   margin-top: var(--space-1-5);
-  padding-left: var(--space-3);
-  font-size: var(--text-sm);
+  border-radius: var(--radius-full);
+  box-sizing: border-box;
 }
 
-.eal-change {
-  line-height: var(--leading-body);
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-1-5);
-  flex-wrap: wrap;
+.eal-dot-job { background: var(--history-dot-job); }
+.eal-dot-status { background: var(--history-dot-status); }
+.eal-dot-people { background: var(--history-dot-people); }
+.eal-dot-work { background: var(--history-dot-work); }
+.eal-dot-quality { background: var(--history-dot-quality); }
+.eal-dot-price { background: var(--history-dot-price); }
+.eal-dot-files { background: var(--history-dot-files); }
+.eal-dot-comment { background: var(--history-dot-comment); }
+.eal-dot-alert { background: var(--history-dot-alert); }
+
+/* "Needs a look" is a hollow ring so it stands out from the filled dots. */
+.eal-dot-ring {
+  background: var(--surface);
+  border: 2px solid var(--history-dot-alert);
 }
 
-.eal-field {
-  font-weight: var(--font-bold);
-  color: var(--text-secondary);
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wider);
-  min-width: fit-content;
-}
-
-.eal-field::after {
-  content: ':';
-}
-
-.eal-modified {
-  color: var(--accent-text);
-  font-style: italic;
-}
-
-.eal-diff {
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--space-1-5);
-  flex-wrap: wrap;
+.eal-entry-body {
+  flex: 1;
   min-width: 0;
 }
 
-.eal-from {
-  text-decoration: line-through;
-  color: var(--danger-ink);
-  word-break: break-word;
+/* The time stays at the right of the first line; a long sentence wraps beneath itself. */
+.eal-entry-line {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gap-field);
 }
 
-.eal-arrow {
-  display: inline-flex;
-  align-self: center;
-  color: var(--text-tertiary);
-  flex-shrink: 0;
+.eal-sentence {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  min-width: 0;
 }
 
-.eal-to {
-  color: var(--success-ink);
-  word-break: break-word;
+.eal-strong {
+  font-weight: var(--font-bold);
+}
+
+.eal-was {
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.eal-time {
+  flex: none;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.eal-toggle {
+  margin-top: var(--space-1);
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--accent-text);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.eal-toggle:hover {
+  text-decoration: underline;
+}
+
+.eal-details {
+  margin: var(--space-1-5) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
 }
 
 .eal-pagination {

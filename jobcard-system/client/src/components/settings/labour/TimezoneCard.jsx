@@ -3,7 +3,7 @@ import FieldError from '../../common/FieldError';
 // The time zone the weekly schedule and public holidays are measured against. Set
 // automatically on first install from the server's own clock; this lets an admin see
 // and correct it, since getting it wrong shifts every overtime window.
-export default function TimezoneCard({ timezone, setTimezone, onSave, saving, error }) {
+export default function TimezoneCard({ timezone, setTimezone, onSave, saving, error, dirty }) {
   // Offer the system's known zones when the browser/runtime supports it, otherwise
   // fall back to a free-text box. Always include the current value so it's shown.
   let zones = [];
@@ -66,6 +66,7 @@ export default function TimezoneCard({ timezone, setTimezone, onSave, saving, er
           <button type="button" className="btn btn-primary" onClick={onSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save time zone'}
           </button>
+          {dirty && <span className="unsaved-pill"><span className="unsaved-pill-dot" aria-hidden="true" />Unsaved changes</span>}
         </div>
       </div>
     </div>

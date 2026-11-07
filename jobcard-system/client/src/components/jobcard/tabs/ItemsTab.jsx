@@ -8,6 +8,7 @@ import LineItemTimerButton from '../LineItemTimerButton';
 import LineItemTagSelect from './LineItemTagSelect';
 import CreatableTagSelect from '../../common/CreatableTagSelect';
 import TimeEntryForm from './TimeEntryForm';
+import PartFileViewer from '../PartFileViewer';
 import FieldError from '../../common/FieldError';
 import { itemWarningMap, filesNotChecked } from '../../../utils/attachmentWarnings';
 import { workBelongsToItem } from '../workMatch.mjs';
@@ -65,6 +66,9 @@ export default function ItemsTab({
   timeEntries = [],
   canManage = false,
   isCritical = false,
+  // The JOB's level, for the heads-up above the parts. Not isCritical: that one
+  // is the time form's checklist switch and can follow a single run instead.
+  jobIsCritical = false,
   readOnly = false,
   attachmentWarnings = null,
   onAttachItemFile,
@@ -124,6 +128,13 @@ export default function ItemsTab({
   // The files were never looked at (no location set, or it can't be reached) — a
   // part with no warning then shows "Files not checked", never a green tick.
   const filesUnchecked = filesNotChecked(attachmentWarnings);
+  // Pressing an attached file's name opens that exact file in the viewer, without
+  // going through the Files window. Held here so one viewer serves every part.
+  const [viewingFile, setViewingFile] = useState(null);
+  const handleViewItemFile = useCallback((category, file) => {
+    setViewingFile({ category, storedName: file.storedName, name: file.name });
+  }, []);
+  const closeFileViewer = useCallback(() => setViewingFile(null), []);
 
   // Dropdowns, tags and toggles write the moment they change. A still-local row's
   // change just stays in local state — see useInstantItems.js's handleItemFieldChange.
@@ -232,6 +243,12 @@ export default function ItemsTab({
           <span className="field-hint parts-files-hint">You can add drawings and other files once the job card is created.</span>
         )}
 
+        {jobIsCritical && (
+          <span className="field-hint critical-parts-hint">
+            Critical: inspection sign-off when you stop.
+          </span>
+        )}
+
         {!timeFormInCard && timeEntryFormNode}
 
         <div className="line-items-list" ref={listRef}>
@@ -273,6 +290,7 @@ export default function ItemsTab({
               onSuppliersChanged={onSuppliersChanged}
               onSupplierDraftChange={onSupplierDraftChange}
               onAttachItemFile={onAttachItemFile}
+              onViewItemFile={handleViewItemFile}
               handleAddTimeEntry={handleAddTimeEntry ? handleAddTimeForPart : undefined}
               timeFormSlot={timeFormInCard && timeFormPartId === item.id ? timeEntryFormNode : null}
               onDuplicate={handleDuplicateItem}
@@ -286,6 +304,7 @@ export default function ItemsTab({
           ))}
         </div>
       </div>
+      {viewingFile && <PartFileViewer jobCardId={jobCardId} file={viewingFile} onClose={closeFileViewer} />}
     </div>
   );
 }
@@ -331,6 +350,7 @@ const LineItemCard = memo(function LineItemCard({
   onSuppliersChanged,
   onSupplierDraftChange,
   onAttachItemFile,
+  onViewItemFile,
   handleAddTimeEntry,
   timeFormSlot,
   onDuplicate,
@@ -493,6 +513,7 @@ const LineItemCard = memo(function LineItemCard({
           attachedFiles={attachedByItem[item.id]?.drawings || []}
           filesUnchecked={filesUnchecked}
           onAttach={onAttachItemFile && isPersisted(item) ? () => onAttachItemFile(item.id, displayNumber, 'job-files') : undefined}
+          onViewFile={(file) => onViewItemFile('job-files', file)}
           error={fieldError(item, 'drawingsType')}
         />
 
@@ -510,6 +531,7 @@ const LineItemCard = memo(function LineItemCard({
           attachedFiles={attachedByItem[item.id]?.customerProperty || []}
           filesUnchecked={filesUnchecked}
           onAttach={onAttachItemFile && isPersisted(item) ? () => onAttachItemFile(item.id, displayNumber, 'customer-property-files') : undefined}
+          onViewFile={(file) => onViewItemFile('customer-property-files', file)}
           error={fieldError(item, 'customerProperty')}
         />
         </div>

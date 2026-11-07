@@ -120,6 +120,8 @@ export default function EmptyState({
   description,
   actionLabel,
   onAction,
+  secondaryActionLabel,
+  onSecondaryAction,
 }) {
   return (
     <div className="empty-state">
@@ -131,6 +133,11 @@ export default function EmptyState({
       {actionLabel && onAction && (
         <button className="btn btn-primary empty-state-action" onClick={onAction}>
           {actionLabel}
+        </button>
+      )}
+      {secondaryActionLabel && onSecondaryAction && (
+        <button className="btn btn-secondary empty-state-action empty-state-action--secondary" onClick={onSecondaryAction}>
+          {secondaryActionLabel}
         </button>
       )}
     </div>

@@ -75,28 +75,19 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [], mac
     return map;
   }, [machines]);
 
-  // Workers whose clock was stopped by the server and who haven't said when they finished.
-  const unconfirmedNames = useMemo(
-    () => [...new Set(timeEntries.filter(e => e.finishUnconfirmed).map(e => e.userName).filter(Boolean))],
-    [timeEntries]
-  );
-
   // Gather every finished block under the part it was worked on, then under the
   // machine-and-worker pairing inside that part. Blocks are matched to a part by the
   // part's PERMANENT id, never by its position number — a number is only a display
   // position that shifts when parts are added or removed. Blocks whose part has since
   // been deleted are kept in their own group rather than dropped, so the hours always
   // add up to what was logged.
-  const { parts, orphan, runningCount, jobTotalMs } = useMemo(() => {
+  const { parts, orphan, jobTotalMs } = useMemo(() => {
     const buckets = new Map();
-    let running = 0;
     let total = 0;
 
     timeEntries.forEach(entry => {
-      if (!entry.endTime) {
-        running += 1;
-        return;
-      }
+      // A running clock has no finish yet; the sheet above says so once.
+      if (!entry.endTime) return;
       const span = new Date(entry.endTime) - new Date(entry.startTime);
       if (!Number.isFinite(span) || span <= 0) return;
 
@@ -159,7 +150,7 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [], mac
       ? { totalMs: orphanMs, rows: sorted(orphanRows) }
       : null;
 
-    return { parts: partList, orphan: orphanGroup, runningCount: running, jobTotalMs: total };
+    return { parts: partList, orphan: orphanGroup, jobTotalMs: total };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineItems, timeEntries, materialTags, treatmentTags, jobTypeTags]);
 
@@ -285,20 +276,6 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [], mac
           </tfoot>
         </table>
       </div>
-
-      {runningCount > 0 && (
-        <p className="cb-running">
-          {runningCount === 1
-            ? 'One timer is still running — its time is not counted here yet.'
-            : `${runningCount} timers are still running — their time is not counted here yet.`}
-        </p>
-      )}
-
-      {unconfirmedNames.length > 0 && (
-        <p className="cb-running">
-          Waiting for {unconfirmedNames.join(', ')} to confirm when they finished — these hours may change.
-        </p>
-      )}
     </section>
   );
 }

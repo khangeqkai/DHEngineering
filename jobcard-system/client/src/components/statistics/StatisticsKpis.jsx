@@ -5,7 +5,7 @@ import { onTimeTone, onTimeWord, ON_TIME_RULE } from './thresholds';
 // One number per card, and the card title says what that number counts.
 // Colour is reserved for lateness — everything else stays neutral so the
 // amber and red actually mean something when they appear.
-export default function StatisticsKpis({ summary = {}, activeWorkersCount = 0, rangeLabel = '', loading = false }) {
+export default function StatisticsKpis({ summary = {}, activeWorkersCount = 0, rangeLabel = '', sameSpanLastMonth = null, loading = false }) {
   const onTimeRate = summary.onTimeRate;
   const hasOnTimeData = onTimeRate !== null && onTimeRate !== undefined;
   const onTimeStatus = !hasOnTimeData ? 'neutral' : onTimeTone(onTimeRate);
@@ -30,6 +30,12 @@ export default function StatisticsKpis({ summary = {}, activeWorkersCount = 0, r
         ? `${finished} ${finished === 1 ? 'job was' : 'jobs were'} finished in ${period}; none had a due date to judge against.`
         : `${onTime} of ${pluralize(rated, 'job')} ${rated === 1 ? 'was' : 'were'} finished on time in ${period}${late > 0 ? `; ${late} finished late` : ''}.${noDueDate > 0 ? ` ${noDueDate} more had no due date.` : ''}`;
 
+  // This month so far is judged against the same number of days last month, never the
+  // whole of it. Plain grey wording: a quiet first week is not a verdict.
+  const span = sameSpanLastMonth;
+  const spanRated = span ? span.onTimeJobsCount + span.lateJobsCount : 0;
+    const spanHours = span ? Math.round(span.totalWorkshopHours * 10) / 10 : 0;
+
   return (
     <>
       {/* The one-line answer, before any of the detail */}
@@ -44,6 +50,8 @@ export default function StatisticsKpis({ summary = {}, activeWorkersCount = 0, r
         )}
       </div>
 
+      {span && !loading && <p className="kpi-compare-note">Compared with the same {pluralize(span.days, 'day')} last month</p>}
+
       <div className="stats-kpi-grid">
         {/* Finished on time */}
         <div className="kpi-card on-time">
@@ -55,6 +63,7 @@ export default function StatisticsKpis({ summary = {}, activeWorkersCount = 0, r
             <div className="kpi-value">
               {loading || !hasOnTimeData ? <span className="stat-dash">—</span> : `${onTimeRate}%`}
             </div>
+            {hasOnTimeData && !loading && <span className="kpi-count">{onTime} of {rated}</span>}
             {hasOnTimeData && !loading && (
               <span className={`kpi-badge ${onTimeStatus}`}>
                 {onTimeWord(onTimeRate)}
@@ -62,6 +71,11 @@ export default function StatisticsKpis({ summary = {}, activeWorkersCount = 0, r
             )}
           </div>
           <p className="kpi-rule">{ON_TIME_RULE}</p>
+          {span && !loading && (
+            <p className="kpi-compare">
+              Last month: {span.onTimeRate === null ? 'none due' : `${span.onTimeRate}% (${span.onTimeJobsCount} of ${spanRated})`}
+            </p>
+          )}
           <div className="kpi-footer">
             <div className="kpi-stat-row">
               <span className="kpi-stat-label">Finished late</span>
@@ -81,6 +95,7 @@ export default function StatisticsKpis({ summary = {}, activeWorkersCount = 0, r
           <div className="kpi-body">
             <div className="kpi-value">{loading ? <span className="stat-dash">—</span> : `${hours}h`}</div>
           </div>
+          {span && !loading && <p className="kpi-compare">Last month: {spanHours} h</p>}
           <div className="kpi-footer">
             <div className="kpi-stat-row">
               <span className="kpi-stat-label">People Who Logged Time</span>

@@ -68,6 +68,13 @@ function hasItemFile(names, itemId) {
 // stripped back off, so the printout shows the name the user uploaded ("ABC.pdf"),
 // not the storage name. Used by the job card printout to list a part's drawings.
 function itemFileDisplayNames(names, itemId) {
+  return itemFiles(names, itemId).map(f => f.name);
+}
+
+// Same files, but each with the stored name beside the display name: two files can
+// share a display name (the " (n)" clash suffix keeps their stored names apart), so
+// a screen that opens one has to ask for it by the stored name.
+function itemFiles(names, itemId) {
   const { partFileCode } = require('./jobcard-files');
   const code = partFileCode(itemId);
   if (!code) return [];
@@ -78,7 +85,7 @@ function itemFileDisplayNames(names, itemId) {
     .map(name => {
       const ext = path.extname(name);
       const base = name.slice(0, name.length - ext.length).replace(stripTag, '');
-      return `${base}${ext}`;
+      return { name: `${base}${ext}`, storedName: name };
     });
 }
 
@@ -141,8 +148,8 @@ function computeAttachmentWarnings(jobcardId, items = []) {
   const customerPropertyNames = fileNames['customer-property-files'] || [];
 
   const flagged = [];
-  // Per-part list of the file names actually attached (id tag stripped back to the
-  // name the user uploaded), keyed by the part's permanent id — never its sort
+  // Per-part list of the files actually attached ({ name, storedName }: the id tag
+  // stripped back to the name the user uploaded, and the name it is stored under), keyed by the part's permanent id — never its sort
   // number, which a new part still on screen can share — so the line-item view can show
   // "✓ ABC.pdf" under each Drawings / Customer Property field instead of a bare
   // "Attached". Only carries parts that have at least one attached file.
@@ -164,8 +171,8 @@ function computeAttachmentWarnings(jobcardId, items = []) {
     // Collect the names of files already attached to this part, so the field can
     // show them. Only the folders we read above are available; an undeclared
     // category simply yields no names.
-    const drawingFiles = anyDrawing ? itemFileDisplayNames(jobFileNames, it.id) : [];
-    const propertyFiles = anyProperty ? itemFileDisplayNames(customerPropertyNames, it.id) : [];
+    const drawingFiles = anyDrawing ? itemFiles(jobFileNames, it.id) : [];
+    const propertyFiles = anyProperty ? itemFiles(customerPropertyNames, it.id) : [];
     if (drawingFiles.length || propertyFiles.length) {
       attachedByItem[it.id] = { drawings: drawingFiles, customerProperty: propertyFiles };
     }

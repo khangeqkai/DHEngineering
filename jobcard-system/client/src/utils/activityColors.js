@@ -28,6 +28,3 @@ export const ACTION_COLORS = {
 
 // Every action name the app knows about, in display order.
 export const ACTION_NAMES = Object.keys(ACTION_COLORS);
-
-// Resolve an action to its colour, falling back to muted text for anything new.
-export const actionColor = (action) => ACTION_COLORS[action] || 'var(--text-secondary)';

@@ -2,74 +2,54 @@ import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { useLatestRequest } from '../../hooks/useLatestRequest';
-import { History, ArrowRight } from 'lucide-react';
+import { History } from 'lucide-react';
 import BottomSheet from './BottomSheet';
-import { formatHistoryValue, formatDateTime } from '../../utils/formatters';
-import { actionColor } from '../../utils/activityColors';
-import { TAG_CATEGORY_INFO } from '../../utils/tagCategories';
+import { describeActivity } from '../../utils/activitySentences';
+import { dayTime } from '../../utils/historySentences';
 import './EntityActivityLog.css';
 
 const PAGE_SIZE = 50;
 
-function formatAction(action) {
+// One sentence: names in bold, the old value in small grey.
+function Sentence({ line }) {
   return (
-    <span className="eal-action" style={{ color: actionColor(action) }}>
-      {action.replace(/_/g, ' ')}
-    </span>
+    <>
+      {line.parts.map((part, i) => (
+        part.strong
+          ? <strong key={i} className="eal-strong">{part.text}</strong>
+          : <span key={i}>{part.text}</span>
+      ))}
+      {line.was && <span className="eal-was"> was {line.was}</span>}
+    </>
   );
 }
 
-// Tag trail entries store the category's internal key; show its on-screen name.
-function formatValue(field, value) {
-  if (field === 'category' && TAG_CATEGORY_INFO[value]) return TAG_CATEGORY_INFO[value].label;
-  return formatHistoryValue(field, value);
-}
-
-function formatChanges(changes) {
-  if (!changes) return null;
-  return Object.entries(changes).map(([field, change]) => (
-    <div key={field} className="eal-change">
-      <span className="eal-field">{field.replace(/_/g, ' ')}</span>
-      {change.changed ? (
-        <span className="eal-modified">modified</span>
-      ) : (
-        <span className="eal-diff">
-          <span className="eal-from">
-            {formatValue(field, change.from) || '(empty)'}
-          </span>
-          <span className="eal-arrow"><ArrowRight size={14} aria-hidden="true" /></span>
-          <span className="eal-to">
-            {formatValue(field, change.to) || '(empty)'}
-          </span>
-        </span>
-      )}
+// An entry in words, worded by the same code as the main Activity Log.
+function EntityEntry({ entry }) {
+  const [expanded, setExpanded] = useState(false);
+  const { kind, ring, headline, details } = describeActivity(entry);
+  const lone = details.length === 1;
+  return (
+    <div className="eal-entry">
+      <span className={`eal-dot eal-dot-${kind}${ring ? ' eal-dot-ring' : ''}`} aria-hidden="true" />
+      <div className="eal-entry-body">
+        <div className="eal-entry-line">
+          <p className="eal-sentence"><Sentence line={headline} /></p>
+          <span className="eal-time">{dayTime(entry.createdAt)}</span>
+        </div>
+        {details.length > 1 && (
+          <button type="button" className="eal-toggle" aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
+            {expanded ? 'Hide' : `Show ${details.length} more`}
+          </button>
+        )}
+        {(lone || (expanded && details.length > 1)) && (
+          <ul className="eal-details">
+            {details.map((line, i) => <li key={i}><Sentence line={line} /></li>)}
+          </ul>
+        )}
+      </div>
     </div>
-  ));
-}
-
-function formatTarget(snapshot) {
-  if (!snapshot) return null;
-  // User: show username (display name)
-  if (snapshot.username) {
-    return snapshot.name ? `${snapshot.username} (${snapshot.name})` : snapshot.username;
-  }
-  // Machine: show machine number (name)
-  if (snapshot.machineNumber) {
-    return snapshot.name ? `${snapshot.machineNumber} (${snapshot.name})` : snapshot.machineNumber;
-  }
-  // Tag: show option name (category)
-  if (snapshot.category && snapshot.name) {
-    const label = TAG_CATEGORY_INFO[snapshot.category]?.label;
-    return label ? `${snapshot.name} (${label})` : snapshot.name;
-  }
-  // Contact: show company name (contact)
-  if (snapshot.companyName && snapshot.contactName) {
-    return `${snapshot.companyName} (${snapshot.contactName})`;
-  }
-  // Supplier: show company name
-  if (snapshot.name) return snapshot.name;
-  if (snapshot.companyName) return snapshot.companyName;
-  return null;
+  );
 }
 
 export default function EntityActivityLog({ entityType, isOpen, onClose, refreshKey }) {
@@ -142,24 +122,7 @@ export default function EntityActivityLog({ entityType, isOpen, onClose, refresh
         ) : (
           <>
             <div className="eal-list">
-              {history.map((entry) => {
-                const target = formatTarget(entry.snapshot);
-                return (
-                <div key={entry.id} className="eal-entry">
-                  <div className="eal-meta">
-                    <span className="eal-user">{entry.userName || 'System'}</span>
-                    {formatAction(entry.action)}
-                    {target && <span className="eal-target">{target}</span>}
-                    <span className="eal-time">{formatDateTime(entry.createdAt)}</span>
-                  </div>
-                  {entry.changes && (
-                    <div className="eal-changes">
-                      {formatChanges(entry.changes)}
-                    </div>
-                  )}
-                </div>
-                );
-              })}
+              {history.map((entry) => <EntityEntry key={entry.id} entry={entry} />)}
             </div>
 
             {totalPages > 1 && (

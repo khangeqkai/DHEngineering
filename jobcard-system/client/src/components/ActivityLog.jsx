@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Search } from 'lucide-react';
 import EmptyState from './common/EmptyState';
@@ -9,6 +9,8 @@ import ExportButton from './common/ExportButton';
 import { exportActivityLog } from '../utils/excelExport';
 import { formatTime, toIsoDate } from '../utils/formatters';
 import { dayHeading } from '../utils/historySentences';
+import JobCardModal from './jobcard/JobCardModal';
+import { prefetchJobCardReferenceData } from './jobcard/useJobCardReferenceData';
 import { describeActivity, activityText, RECORD_TYPES } from '../utils/activitySentences';
 
 // The Excel sheet carries the same plain sentence the screen shows ("What happened").
@@ -50,7 +52,7 @@ function Sentence({ line }) {
   );
 }
 
-function ActivityEntry({ item }) {
+function ActivityEntry({ item, onOpenJob }) {
   const [expanded, setExpanded] = useState(false);
   const { described, time } = item;
   const { kind, ring, headline, details, jobNumber } = described;
@@ -63,7 +65,21 @@ function ActivityEntry({ item }) {
         <div className="activity-entry-line">
           <p className="activity-sentence">
             <Sentence line={headline} />
-            {jobNumber && <span className="activity-job"> · job {jobNumber}</span>}
+            {jobNumber && (
+              <span className="activity-job">
+                {' · job '}
+                {item.jobId && item.jobExists ? (
+                  <button
+                    type="button"
+                    className="row-link-btn activity-job-link"
+                    aria-label={`Open job ${jobNumber} and its history`}
+                    onClick={() => onOpenJob(item.jobId)}
+                  >
+                    {jobNumber}
+                  </button>
+                ) : jobNumber}
+              </span>
+            )}
           </p>
           <span className="activity-time">{time}</span>
         </div>
@@ -104,6 +120,14 @@ export default function ActivityLog() {
   const [range, setRange] = useState('30');
   const [people, setPeople] = useState([]);
   const startRequest = useLatestRequest();
+  // The job window opens over this page. Open/closed is kept apart from which job, so
+  // closing doesn't blank the id while the window is still saving on its way out.
+  const [modalJobId, setModalJobId] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
+  const openJob = useCallback((jobId) => { setModalJobId(jobId); setModalOpen(true); }, []);
+  // Fill the picker lists now so the job window opens with them already in place.
+  useEffect(() => { prefetchJobCardReferenceData(); }, []);
 
   useEffect(() => {
     api.getEmployees()
@@ -130,7 +154,7 @@ export default function ActivityLog() {
         if (isLatest()) setLoading(false);
       }
     })();
-  }, [page, filters, startRequest]);
+  }, [page, filters, startRequest, reloadTick]);
 
   // A new filter starts again from the first page.
   const choose = (setter) => (value) => { setter(value); setPage(1); };
@@ -144,7 +168,10 @@ export default function ActivityLog() {
     described: describeActivity(entry),
     time: formatTime(entry.createdAt, { hour: '2-digit', minute: '2-digit' }),
     day: entry.createdAt ? toIsoDate(new Date(entry.createdAt)) : '',
-    createdAt: entry.createdAt
+    createdAt: entry.createdAt,
+    // A job's entries open the job; one whose job has been deleted is plain text.
+    jobId: entry.entityType === 'jobcard' ? entry.entityId : null,
+    jobExists: entry.jobExists !== false
   })), [entries]);
 
   const days = useMemo(() => {
@@ -188,7 +215,7 @@ export default function ActivityLog() {
           <section key={group.day} className="activity-day">
             <h3 className="activity-day-heading">{group.heading}</h3>
             <ul className="activity-entries">
-              {group.items.map((item) => <ActivityEntry key={item.key} item={item} />)}
+              {group.items.map((item) => <ActivityEntry key={item.key} item={item} onOpenJob={openJob} />)}
             </ul>
           </section>
         ))}
@@ -234,6 +261,14 @@ export default function ActivityLog() {
       <div className="card">
         <div className="card-body">{renderBody()}</div>
       </div>
+
+      <JobCardModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        jobCardId={modalJobId}
+        initialHistoryOpen
+        onSuccess={() => setReloadTick((n) => n + 1)}
+      />
 
       {!loading && total > 0 && (
         <div className="activity-pager">

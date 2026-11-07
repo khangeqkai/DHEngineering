@@ -8,6 +8,7 @@ import {
   DAYS as DAY_KEYS, TIERS as TIER_VALUES,
   cleanDayBlocks, gridFromBlocks, blocksFromGrid
 } from '../../../server/src/shared/overtimeSchedule';
+import { sameNumber } from '../utils/sameNumber';
 import { isCalendarDate } from '../../../server/src/shared/calendarDate';
 
 // The day keys and tier values themselves are the one shared shape (server/src/shared/
@@ -119,6 +120,10 @@ export function useLabourRates({ showConfirm } = {}) {
   const [savedSchedule, setSavedSchedule] = useState('');
   const [savedHolidays, setSavedHolidays] = useState('');
   const [savedTimezone, setSavedTimezone] = useState('');
+  // The default rate and the three multipliers as last stored (text, as the boxes hold
+  // them), so those cards can show edits waiting on their Save button too.
+  const [savedDefaultRate, setSavedDefaultRate] = useState(null);
+  const [savedMults, setSavedMults] = useState(null);
 
   const { setFieldErrors, errorFor } = useFieldErrors((name) => ({
     defaultRate, ot1Mult, ot2Mult, holidayMult, timezone
@@ -140,13 +145,18 @@ export function useLabourRates({ showConfirm } = {}) {
     try {
       setLoading(true);
       const data = await api.getSettings();
-      if (data.labourDefaultRate != null) setDefaultRate(String(data.labourDefaultRate));
+      if (data.labourDefaultRate != null) { setDefaultRate(String(data.labourDefaultRate)); setSavedDefaultRate(String(data.labourDefaultRate)); }
       const loadedSchedule = normalize(data.labourSchedule);
       setSchedule(loadedSchedule);
       setSavedSchedule(JSON.stringify(loadedSchedule));
       if (data.labourOt1Multiplier != null) setOt1Mult(String(data.labourOt1Multiplier));
       if (data.labourOt2Multiplier != null) setOt2Mult(String(data.labourOt2Multiplier));
       if (data.labourHolidayMultiplier != null) setHolidayMult(String(data.labourHolidayMultiplier));
+      setSavedMults({
+        ot1: String(data.labourOt1Multiplier ?? ''),
+        ot2: String(data.labourOt2Multiplier ?? ''),
+        holiday: String(data.labourHolidayMultiplier ?? '')
+      });
       let hol = data.labourPublicHolidays;
       if (typeof hol === 'string') { try { hol = JSON.parse(hol); } catch { hol = []; } }
       const loadedHolidays = Array.isArray(hol) ? hol : [];
@@ -233,6 +243,7 @@ export function useLabourRates({ showConfirm } = {}) {
     setSavingDefaultRate(true);
     try {
       await api.updateSettings({ labourDefaultRate: defaultRate });
+      setSavedDefaultRate(defaultRate);
       toast.success('Default hourly rate updated');
     } catch (err) {
       toast.error(err.message || 'Couldn\'t save the default rate. Check the connection and try again.');
@@ -261,6 +272,7 @@ export function useLabourRates({ showConfirm } = {}) {
         labourOt2Multiplier: ot2Mult,
         labourHolidayMultiplier: holidayMult
       });
+      setSavedMults({ ot1: ot1Mult, ot2: ot2Mult, holiday: holidayMult });
       toast.success('Overtime multipliers updated');
     } catch (err) {
       toast.error(err.message || 'Couldn\'t save the multipliers. Check the connection and try again.');
@@ -323,6 +335,11 @@ export function useLabourRates({ showConfirm } = {}) {
 
   const scheduleDirty = savedSchedule !== '' && JSON.stringify(schedule) !== savedSchedule;
   const holidaysDirty = savedHolidays !== '' && JSON.stringify(holidays) !== savedHolidays;
+  const defaultRateDirty = savedDefaultRate !== null && !sameNumber(defaultRate, savedDefaultRate);
+  const multipliersDirty = savedMults !== null && (
+    !sameNumber(ot1Mult, savedMults.ot1) || !sameNumber(ot2Mult, savedMults.ot2) || !sameNumber(holidayMult, savedMults.holiday)
+  );
+  const timezoneDirty = savedTimezone !== '' && timezone !== savedTimezone;
 
   return {
     loading, loadFailed, load,
@@ -333,7 +350,7 @@ export function useLabourRates({ showConfirm } = {}) {
     handleSaveMultipliers, savingMultipliers,
     holidays, addHoliday, removeHoliday, handleSaveHolidays, savingHolidays,
     timezone, setTimezone, handleSaveTimezone, savingTimezone,
-    scheduleDirty, holidaysDirty,
+    scheduleDirty, holidaysDirty, defaultRateDirty, multipliersDirty, timezoneDirty,
     errorFor
   };
 }

@@ -31,6 +31,8 @@ export default function DataTable({
   loading = false,
   searchable = false,
   searchKeys = [],
+  // Columns holding phone numbers: a phone-like search finds them by digits alone.
+  searchDigitKeys = [],
   searchPlaceholder = 'Search…',
   emptyMessage = 'No data found',
   emptyIcon,
@@ -50,7 +52,8 @@ export default function DataTable({
 }) {
   const { searchTerm, setSearchTerm, filteredData } = useTableFilter(
     data,
-    searchKeys
+    searchKeys,
+    searchDigitKeys
   );
   const { sortKey, sortOrder, handleSort, sortedData } = useTableSort(
     filteredData,

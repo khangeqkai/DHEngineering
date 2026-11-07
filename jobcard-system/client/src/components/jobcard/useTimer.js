@@ -681,6 +681,8 @@ export function useTimer(jobcardId, { onExternalStop, lineItems, onJobClosed } =
       // the form switches its checklist on and marks the unanswered checks, instead
       // of a pop-up that every retry would repeat.
       if (err?.data?.code === CRITICAL_INSPECTION_REFUSED) return { startedNewTimer: false, inspectionRefusal: err };
+      // The server turned the note away as junk (only a hand-made save gets past the form's own check): hand it back to be marked on the box.
+      if (Array.isArray(err?.data?.fields) && err.data.fields.some(f => f.field === 'description')) return { startedNewTimer: false, descriptionRefusal: err };
       toast.error(err.message || 'Couldn\'t save the time. Check the connection and try again.', { id: 'update-time-entry-failed' });
       return { startedNewTimer: false };
     } finally {

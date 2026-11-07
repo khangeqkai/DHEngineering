@@ -13,7 +13,7 @@ export default function HomeAccessCard({ s }) {
   const codeError = s.errorFor('homeAccessCode');
 
   return (
-    <div className="card full-width">
+    <div className="card">
       <div className="card-header">
         <h2>Home access</h2>
       </div>

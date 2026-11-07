@@ -17,6 +17,7 @@ const {
   buildWorkerLeaderboard,
   formatMachineUtilization,
   buildPeriodTrends,
+  buildSameSpanLastMonth,
   buildCustomerRankings
 } = require('./statistics-helpers');
 
@@ -99,6 +100,7 @@ router.get('/', (req, res) => {
     const workerLeaderboard = buildWorkerLeaderboard(workerEntriesMap, defaultRules);
     const { machineUtilization, totalMachineHours } = formatMachineUtilization(machineStatsMap);
     const periodTrends = buildPeriodTrends(inRangeJobs, completedInRangeJobs, inRangeTimeEntries, fmt, groupBy, startDate, endDate, preset);
+    const sameSpanLastMonth = buildSameSpanLastMonth(preset, startDate, endDate, fmt, todayStr);
     const customerRankings = buildCustomerRankings(inRangeJobs, completedInRangeJobs, customerHoursMap, fmt, req.user.role, ot);
 
     res.json({
@@ -131,6 +133,7 @@ router.get('/', (req, res) => {
       workerLeaderboard,
       machineUtilization,
       periodTrends,
+      sameSpanLastMonth,
       customerRankings,
       delayedJobsList,
       qualityLevelDistribution,

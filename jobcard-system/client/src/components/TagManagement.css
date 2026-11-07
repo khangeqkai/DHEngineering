@@ -20,3 +20,5 @@
   font-size: var(--text-xs); font-weight: var(--font-regular); text-transform: uppercase; letter-spacing: var(--tracking-wider);
   background: var(--surface-inset); color: var(--text-tertiary);
 }
+/* "Added: <name>" inside the form after Create and add another. */
+.tag-added-line { display: inline-flex; align-items: center; gap: var(--gap-inline); margin: 0; font-size: var(--text-sm); color: var(--success-ink); }

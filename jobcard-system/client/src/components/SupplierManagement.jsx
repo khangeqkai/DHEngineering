@@ -80,7 +80,12 @@ export default function SupplierManagement() {
         api.getTags('treatment')
       ]),
       ([suppliersData, tagsData]) => {
-        setSuppliers(suppliersData);
+        // The services are flattened to one searchable line, so typing "anodis" finds
+        // the suppliers who do anodising, as the Services column shows.
+        setSuppliers(suppliersData.map(sp => ({
+          ...sp,
+          serviceNames: (sp.serviceTags || []).map(t => t.name).join(', ')
+        })));
         setServiceTags(tagsData);
       },
       (err) => toast.error(err.message || 'Couldn\'t load the supplier data. Try again in a moment.')
@@ -142,7 +147,7 @@ export default function SupplierManagement() {
         toast.success('Supplier updated');
       } else {
         await api.createSupplier({ ...tidied, serviceTagIds });
-        toast.success('Supplier updated');
+        toast.success('Supplier added');
       }
       await reloadData();
       bumpActivity();
@@ -564,7 +569,8 @@ export default function SupplierManagement() {
             loading={loading}
             rowClassName={(row) => row.active ? '' : 'inactive-row'}
             searchable
-            searchKeys={['name', 'contactName', 'contactPhone']}
+            searchKeys={['name', 'contactName', 'contactEmail', 'serviceNames']}
+            searchDigitKeys={['contactPhone']}
             searchPlaceholder="Search suppliers…"
             onVisibleRowsChange={setVisibleSuppliers}
             emptyState={{

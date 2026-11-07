@@ -12,6 +12,7 @@
 import { describeEntry } from './historySentences';
 import { formatHistoryValue } from './formatters';
 import { TAG_CATEGORY_INFO } from './tagCategories';
+import { ROLE_LABELS } from './roleLabels';
 
 const strong = (text) => ({ text: String(text), strong: true });
 const isEmpty = (v) => v === null || v === undefined || v === '';
@@ -44,7 +45,6 @@ const FIELD_WORD = {
   requiresPo: 'PO requirement'
 };
 
-const ROLE_WORD = { admin: 'Admin', manager: 'Manager', user: 'Worker' };
 const FAIL_REASON = {
   invalid_password: 'wrong PIN',
   user_not_found_or_archived: 'no such active user',
@@ -64,7 +64,7 @@ const possessive = (name) => (/s$/i.test(name) ? `${name}'` : `${name}'s`);
 // nothing here ever shows a raw code.
 function valueWord(key, v) {
   if (isEmpty(v)) return 'blank';
-  if (key === 'role') return ROLE_WORD[v] || cap(String(v));
+  if (key === 'role') return ROLE_LABELS[v] || cap(String(v));
   if (key === 'category' && TAG_CATEGORY_INFO[v]) return TAG_CATEGORY_INFO[v].label;
   if (key === 'password') return String(v).replace(/[()]/g, '');
   if (['active', 'archived', 'approved'].includes(key)) {
@@ -144,7 +144,8 @@ function describeRecord(entry) {
     lines = [];
   } else if (action === 'update' && entityType === 'user' && changes.length === 1 && changes[0][0] === 'password') {
     const self = entry.entityId && entry.entityId === entry.userId;
-    headline = self ? act(entry, ['changed their own PIN']) : act(entry, ['changed the PIN for ', label]);
+    const reset = entry.changes.password?.to === '(reset)';
+    headline = self ? act(entry, ['changed their own PIN']) : act(entry, [reset ? 'reset the PIN for ' : 'changed the PIN for ', label]);
     lines = [];
   } else if (action === 'update') {
     const flag = changes.length === 1 && ['active', 'archived'].includes(changes[0][0]) ? changes[0] : null;

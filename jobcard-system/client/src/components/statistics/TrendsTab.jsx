@@ -1,5 +1,5 @@
 import { BarChart3 } from 'lucide-react';
-import { pluralize } from '../../utils/formatters';
+import { pluralize, todayIsoDate } from '../../utils/formatters';
 import DataTable from '../common/DataTable';
 import EmptyState from '../common/EmptyState';
 import { onTimeTone } from './thresholds';
@@ -8,9 +8,9 @@ import { onTimeTone } from './thresholds';
 // get one labelled row each rather than two bars sharing a picture. Every bar
 // prints its own number, and the longest bar in each measure is stated, so a bar
 // is only ever compared against bars of the same kind.
-function MeasureRows({ title, scaleNote, rows, tone }) {
+function MeasureRows({ title, scaleNote, rows, tone, wide = false }) {
   return (
-    <div className="trend-measure">
+    <div className={`trend-measure${wide ? ' trend-measure--wide' : ''}`}>
       <div className="trend-measure-head">
         <span className="trend-measure-title">{title}</span>
         <span className="trend-measure-scale">{scaleNote}</span>
@@ -21,7 +21,10 @@ function MeasureRows({ title, scaleNote, rows, tone }) {
           <div className="trend-row-track">
             <div className={`trend-row-fill ${tone}`} style={{ '--bar-w': `${r.percent}%` }} />
           </div>
-          <span className="trend-row-value">{r.display}</span>
+          <span className="trend-row-value" title={r.hint}>
+            {r.display}
+            {r.soFar && <span className="trend-row-sofar"> so far</span>}
+          </span>
         </div>
       ))}
     </div>
@@ -47,6 +50,22 @@ export default function TrendsTab({ periodTrends = [], groupBy = 'month', select
     percent: pct(t.jobsCompleted || 0, maxFinished),
     display: `${t.jobsCompleted || 0}`
   }));
+
+  // On time, one bar per period, on a fixed 0 to 100% scale. A period with nothing
+  // judged (no finished job had a due date) has no bar rather than an empty one that
+  // would read as 0%. The period still running is marked "so far".
+  const currentKey = todayIsoDate().slice(0, groupBy === 'year' ? 4 : 7);
+  const onTimeRows = periodTrends.map((t) => {
+    const rated = (t.onTimeCompleted || 0) + (t.lateCompleted || 0);
+    return {
+      key: t.period,
+      label: t.periodLabel,
+      soFar: t.period === currentKey && rated > 0,
+      hint: rated > 0 ? `${t.onTimeCompleted} of ${rated} on time` : undefined,
+      percent: t.onTimeRate === null || t.onTimeRate === undefined ? 0 : t.onTimeRate,
+      display: rated > 0 ? `${t.onTimeRate}%` : '—'
+    };
+  });
 
   return (
     <div className="stats-panel">
@@ -97,6 +116,13 @@ export default function TrendsTab({ periodTrends = [], groupBy = 'month', select
                 rows={finishedRows}
                 tone="finished"
               />
+              <MeasureRows
+                title={`On time, ${groupBy === 'month' ? 'month by month' : 'year by year'}`}
+                scaleNote="Full bar = 100% of the jobs judged"
+                rows={onTimeRows}
+                tone="ontime"
+                wide
+              />
             </div>
           )}
         </div>
@@ -137,10 +163,13 @@ export default function TrendsTab({ periodTrends = [], groupBy = 'month', select
                 label: 'Finished On Time',
                 align: 'right',
                 sortable: true,
-                render: (val) => val !== null ? (
-                  <span className={`kpi-badge ${onTimeTone(val)}`}>
-                    {val}%
-                  </span>
+                render: (val, row) => val !== null ? (
+                  <>
+                    <span className={`kpi-badge ${onTimeTone(val)}`}>
+                      {val}%
+                    </span>
+                    <span className="kpi-count"> {row.onTimeCompleted} of {row.onTimeCompleted + row.lateCompleted}</span>
+                  </>
                 ) : (
                   <span className="stat-dash">—</span>
                 )

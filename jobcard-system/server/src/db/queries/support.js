@@ -76,7 +76,8 @@ const historyQueries = {
   // page boundary never repeats or skips entries sharing a timestamp.
   searchPage: db.prepare(`
     SELECT * FROM (
-      SELECT h.*, ${HISTORY_JOB_NUMBER_SQL} AS job_number, ${HISTORY_RECORD_NAME_SQL} AS record_name
+      SELECT h.*, ${HISTORY_JOB_NUMBER_SQL} AS job_number, ${HISTORY_RECORD_NAME_SQL} AS record_name,
+        (CASE WHEN h.entity_type = 'jobcard' THEN EXISTS (SELECT 1 FROM jobcards je WHERE je.id = h.entity_id) END) AS job_exists
       FROM history h
     ) h
     WHERE ${HISTORY_FILTER_SQL}

@@ -134,6 +134,18 @@
   color: var(--text-secondary);
 }
 
+/* The job number reads as part of the grey sentence; it only turns into a link on hover or focus. */
+.row-link-btn.activity-job-link {
+  font-weight: var(--font-regular);
+  color: inherit;
+}
+
+.row-link-btn.activity-job-link:hover,
+.row-link-btn.activity-job-link:focus-visible {
+  color: var(--accent-text);
+  text-decoration: underline;
+}
+
 .activity-time {
   flex: none;
   padding-top: var(--space-0-5);

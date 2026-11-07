@@ -10,6 +10,7 @@ const { displayName, cleanName } = require('../shared/names');
 const { authenticate, requireManagement, can, isManagement, liveRole, ALL_ROLES } = require('../middleware/auth');
 const { validateLogin, validateCreateUser, validateUpdateUser, validateUpdatePreferences, PIN_REGEX, PIN_MESSAGE } = require('../middleware/validation');
 const { db, userQueries, jobNoteQueries, jobNoteMentionQueries, timeEntryQueries, recordHistory, actorName, getSettings } = require('../db/database');
+const { isValidPin } = require('../shared/pin');
 const { diffFields } = require('../utils/historyChanges');
 const { isViaTunnel, clientIp } = require('../utils/homeAccess');
 const { setArchived } = require('../utils/archiveToggle');
@@ -373,30 +374,22 @@ router.post('/users', authenticate, requireManagement, userCreationLimiter, vali
 router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, async (req, res) => {
   try {
     const { id } = req.params;
-    const { password, role, email } = req.body;
+    const { role, email } = req.body;
     // Stored clean; a name that is blank once cleaned counts as not sent (a name can't be cleared).
     const name = cleanName(req.body.name);
 
-    const isSelf = req.user.userId === id;
-
-    // Changing your OWN PIN always goes through PUT /auth/change-password, which
-    // asks for the current one first. Allowing it here would let anyone who walks
-    // up to a signed-in session set a PIN of their own without ever proving they
-    // knew the old one — and lock the real owner out. Resetting SOMEONE ELSE'S PIN
-    // (the management reset below) is deliberately different: that's the point of a reset.
-    if (password && isSelf) {
-      return res.status(403).json({ error: 'To change your own PIN, use Change PIN in Settings. It asks for your current PIN first.' });
+    // A PIN is never set here. Someone else's goes through Reset PIN
+    // (POST /auth/users/:id/reset-pin), your own through Change PIN
+    // (PUT /auth/change-password, which asks for the current one first) — one way each.
+    if (req.body.password !== undefined) {
+      return res.status(400).json({ error: "A PIN can't be changed here. Use Reset PIN on the person's row, or Change PIN in Settings for your own." });
     }
 
     // Every refusal that depends on who is asking and on the account being edited, in
-    // one place so it can be judged twice: once up front with the request's role (so a
-    // caller who may not edit this account is told so before anything else, and before
-    // the PIN is hashed), and again after the hash with the caller's live role and a
-    // fresh read of the account — the hash waits, and nothing may wait between these
-    // checks (the last-admin rule above all) and the write they guard: two admins
-    // demoting each other at once would both pass, and an older read of the account
-    // could overwrite a newer change. From the second judging onward the route runs
-    // straight through to the commit.
+    // one place. It is judged against the caller's live role and a fresh read of the
+    // account, straight through to the commit with nothing waiting in between (the
+    // last-admin rule above all): two admins demoting each other at once would otherwise
+    // both pass, and an older read of the account could overwrite a newer change.
     const refusalFor = (actorRole, target) => {
       if (!isManagement(actorRole)) return { status: 403, error: 'You are no longer allowed to manage people. Sign in again to see what you can do.' };
       const canManageAdmins = can(actorRole, 'adminAccounts');
@@ -405,7 +398,7 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
       // A manager can never promote anyone to admin — that would let them grant
       // themselves the costing access managers are barred from.
       if (role === 'admin' && !canManageAdmins) return { status: 403, error: 'Only an admin can make someone an admin.' };
-      // Admin accounts are off-limits to managers (PIN resets, demotion, renames).
+      // Admin accounts are off-limits to managers (demotion, renames).
       if (target.role === 'admin' && !canManageAdmins) return { status: 403, error: 'Only an admin can change an admin account.' };
       // The last admin can't demote themselves (or be demoted) — with nobody left in
       // the role, nobody could ever grant it back. Checked against OTHER active admins,
@@ -417,17 +410,6 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
       return null;
     };
 
-    const asked = findOr404(res, userQueries.getById.get(id), "That person couldn't be found. They may have been removed.");
-    if (!asked) return;
-    const refusedUpFront = refusalFor(req.user.role, asked);
-    if (refusedUpFront) return res.status(refusedUpFront.status).json({ error: refusedUpFront.error });
-
-    if (password && !PIN_REGEX.test(password)) {
-      return res.status(400).json({ error: PIN_MESSAGE });
-    }
-    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
-
-    // Judged again, from here straight through to the commit with nothing waiting.
     const user = findOr404(res, userQueries.getById.get(id), "That person couldn't be found. They may have been removed.");
     if (!user) return;
     const refusedNow = refusalFor(liveRole(req), user);
@@ -442,7 +424,6 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
     if (email !== undefined) fieldsToTrack.push(['email', 'email', email || null, user.email || null]);
     if (role) fieldsToTrack.push(['role', 'role', role]);
     const changes = diffFields(user, fieldsToTrack);
-    if (password) changes.password = { from: '(hidden)', to: '(changed)' };
 
     // Update user (normalize empty email to null for DB consistency)
     const emailToStore = email !== undefined ? (email || null) : user.email;
@@ -462,11 +443,6 @@ router.put('/users/:id', authenticate, requireManagement, validateUpdateUser, as
       );
       if (changes.name) {
         jobNoteQueries.updateAuthorNameByUserId.run(newName, id);
-      }
-      if (hashedPassword) {
-        userQueries.updatePassword.run(hashedPassword, id);
-        // A reset PIN must end whoever is currently signed in with the old one.
-        userQueries.updateSessionToken.run(null, id);
       }
       if (Object.keys(changes).length > 0) {
         recordHistory('user', id, 'update', req.user.userId, actorName(req), changes, { username: user.username, name: user.name });
@@ -529,6 +505,60 @@ router.post('/users/:id/deactivate', authenticate, requireManagement, (req, res)
     respond: () => ({ success: true, message: 'User archived' }),
     snapshot: (row) => ({ username: row.username, name: row.name })
   });
+});
+
+// Reset someone else's PIN (admin or manager), following Archive's rules: never your own
+// account (that is Change PIN in Settings, which asks for the current PIN first), and a
+// manager never on an admin. The new PIN is hashed and never recorded or logged anywhere;
+// the trail only says the PIN was reset. Their open session ends, so they sign in again.
+router.post('/users/:id/reset-pin', authenticate, requireManagement, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pin = req.body && req.body.pin;
+
+    if (req.user.userId === id) {
+      return res.status(400).json({ error: 'To change your own PIN, use Change PIN in Settings. It asks for your current PIN first.' });
+    }
+
+    const refusalFor = (actorRole, target) => {
+      if (!isManagement(actorRole)) return { status: 403, error: 'You are no longer allowed to manage people. Sign in again to see what you can do.' };
+      if (target.role === 'admin' && !can(actorRole, 'adminAccounts')) {
+        return { status: 403, error: 'Only an admin can reset the PIN of an admin account.' };
+      }
+      if (!target.active) return { status: 409, error: 'Restore this person before resetting their PIN.' };
+      return null;
+    };
+
+    const asked = findOr404(res, userQueries.getById.get(id), "That person couldn't be found. They may have been removed.");
+    if (!asked) return;
+    const refusedUpFront = refusalFor(req.user.role, asked);
+    if (refusedUpFront) return res.status(refusedUpFront.status).json({ error: refusedUpFront.error });
+
+    if (!isValidPin(pin)) {
+      return res.status(400).json({ error: PIN_MESSAGE, fields: [{ field: 'pin', message: PIN_MESSAGE }] });
+    }
+    const hashed = await bcrypt.hash(pin, 10);
+
+    // Judged again after the hash wait, from here straight through to the write.
+    const user = findOr404(res, userQueries.getById.get(id), "That person couldn't be found. They may have been removed.");
+    if (!user) return;
+    const refusedNow = refusalFor(liveRole(req), user);
+    if (refusedNow) return res.status(refusedNow.status).json({ error: refusedNow.error });
+
+    db.transaction(() => {
+      userQueries.updatePassword.run(hashed, id);
+      // Ends whoever is signed in with the old PIN (they are told their PIN may have changed).
+      userQueries.updateSessionToken.run(null, id);
+      recordHistory('user', id, 'update', req.user.userId, actorName(req),
+        { password: { from: '(hidden)', to: '(reset)' } },
+        { username: user.username, name: user.name });
+    })();
+
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, 'Reset PIN error');
+    res.status(500).json({ error: 'Something went wrong on the server. Try again in a moment; if it keeps happening, tell the office.' });
+  }
 });
 
 // Restore archived user (admin or manager)

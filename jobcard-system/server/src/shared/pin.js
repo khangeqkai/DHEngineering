@@ -11,4 +11,14 @@ function isValidPin(value) {
   return typeof value === 'string' && PIN_REGEX.test(value);
 }
 
-module.exports = { PIN_REGEX, PIN_MESSAGE, isValidPin };
+// A PIN too easy to guess to hand out as a made-up one: all the same digit (0000, 1111)
+// or a straight run up or down (1234, 4321). Typing one by hand is still allowed.
+function isWeakPin(value) {
+  if (!isValidPin(value)) return false;
+  const digits = value.split('').map(Number);
+  if (digits.every((d) => d === digits[0])) return true;
+  const steps = digits.slice(1).map((d, i) => d - digits[i]);
+  return steps.every((x) => x === 1) || steps.every((x) => x === -1);
+}
+
+module.exports = { PIN_REGEX, PIN_MESSAGE, isValidPin, isWeakPin };

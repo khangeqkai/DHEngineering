@@ -467,6 +467,9 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
                 </div>
 
                 <div className="hub-body">
+                  {!canManageFiles && !locked && assignableParts.length > 0 && totalFileCount > 0 && (
+                    <p className="hub-move-note">Ask the office to move a saved file</p>
+                  )}
                   {ORDER.map(renderSection)}
                 </div>
 

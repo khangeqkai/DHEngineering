@@ -68,10 +68,21 @@ export function useContactSearch() {
     showDropdown: showContactDropdown,
     setShowDropdown: setShowContactDropdown,
     containerRef: contactSearchRef,
-    handleFocus: handleFieldFocus,
+    handleFocus: focusAndOpenCompanies,
     handleBlur: handleFieldBlur,
     noteTyping: noteCompanyTyping
   } = useSuggestionLifecycle({ onFocus: loadCompanies });
+
+  // The Company box taking focus on its own when a new job opens passes { quiet: true }:
+  // the customer list is fetched ready for the first keystroke, but no suggestions are
+  // opened until the person types (noteCompanyTyping brings them in).
+  const handleFieldFocus = useCallback((options) => {
+    if (options && options.quiet === true) {
+      loadCompanies();
+      return;
+    }
+    focusAndOpenCompanies();
+  }, [loadCompanies, focusAndOpenCompanies]);
 
   // Company autocomplete — filters the loaded list as the company field is typed.
   useEffect(() => {

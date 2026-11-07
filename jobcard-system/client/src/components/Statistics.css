@@ -334,6 +334,7 @@
 
 .trend-row-fill.hours { background: var(--primary-accent); }
 .trend-row-fill.finished { background: var(--success-color); }
+.trend-row-fill.ontime { background: var(--primary-accent); }
 
 .trend-row-value {
   font-size: var(--text-xs);
@@ -341,6 +342,34 @@
   font-family: var(--font-mono);
   text-align: right;
   color: var(--text-primary);
+}
+
+/* The running period's value carries a grey "so far" after it, so its column is a little wider. */
+.trend-measure--wide .trend-row { grid-template-columns: 90px 1fr 90px; }
+.trend-measure--wide .trend-row-value { white-space: nowrap; }
+.trend-row-sofar {
+  font-weight: var(--font-regular);
+  color: var(--text-secondary);
+}
+
+/* The small count beside a percentage, and the same-days-last-month line: plain grey,
+   never the red or green of a verdict. */
+.kpi-count {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.kpi-compare {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: var(--leading-snug);
+}
+
+.kpi-compare-note {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
 }
 
 /* The one-line answer, above the cards */

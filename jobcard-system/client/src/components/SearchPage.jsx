@@ -1,11 +1,14 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useNavigationType } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Search, X, ChevronLeft, ChevronRight, Briefcase, Users as UsersIcon, Clock, Timer, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useFinishQuestion } from '../context/FinishQuestionContext';
 import { isManagement, can } from '../utils/roles';
 import useSearch from '../hooks/useSearch';
+import { useLocalToday } from '../hooks/useLocalToday';
+import { getInitials, getAvatarColor } from '../utils/initials';
+import { recallSearchView } from '../utils/sessionMemory';
 import PageHeader from './common/PageHeader';
 import DataTable from './common/DataTable';
 import EmptyState from './common/EmptyState';
@@ -14,7 +17,7 @@ import { prefetchJobCardReferenceData } from './jobcard/useJobCardReferenceData'
 import { ACTIVITY_FIELDS } from './searchFields';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import { describeActivity, recordTypeName } from '../utils/activitySentences';
-import { statusToken, priorityToken, PRIORITY_LABELS, STATUS_LABELS } from './JobCardList.constants';
+import { statusToken, priorityToken, PRIORITY_LABELS, STATUS_LABELS, isJobOverdue } from './JobCardList.constants';
 import { STATUS_OPTIONS, PRIORITY_OPTIONS } from './jobcard/constants';
 import { ACTION_NAMES } from '../utils/activityColors';
 import { JOB_DELETED_MESSAGE, JOB_DELETED_TOAST_ID } from '../utils/jobLock';
@@ -120,6 +123,39 @@ function PriorityBadge({ priority }) {
   return <span className={`badge priority-${priorityToken(p)}`}>{PRIORITY_LABELS[p] || fmt(p)}</span>;
 }
 
+// The same initials circles as the job list's Assigned To column, to look at only:
+// nothing here assigns anyone.
+function AssigneeAvatars({ assignees }) {
+  if (!assignees?.length) return '-';
+  const MAX_VISIBLE = 3;
+  const visible = assignees.slice(0, MAX_VISIBLE);
+  const overflow = assignees.length - visible.length;
+  return (
+    <span className="assignee-preview" title={assignees.map(a => a.userName).filter(Boolean).join(', ')}>
+      <span className="avatar-stack">
+        {visible.map(a => {
+          const c = getAvatarColor(a.userName || a.userId);
+          return (
+            <span key={a.userId} className="avatar-chip" style={{ backgroundColor: c.bg, color: c.fg }}>
+              {getInitials(a.userName)}
+            </span>
+          );
+        })}
+        {overflow > 0 && <span className="avatar-chip avatar-overflow">+{overflow}</span>}
+      </span>
+    </span>
+  );
+}
+
+function CustomerJobsButton({ companyId, onOpen }) {
+  return (
+    <button type="button" className="search-customer-link"
+      onClick={(e) => { e.stopPropagation(); onOpen(companyId); }}>
+      Jobs for this customer
+    </button>
+  );
+}
+
 function Pagination({ page, totalPages, total, onPageChange }) {
   if (totalPages <= 1) return null;
   const start = (page - 1) * 25 + 1;
@@ -144,14 +180,26 @@ export default function SearchPage() {
   const { user } = useAuth();
   const canManage = isManagement(user);
   const navigate = useNavigate();
+  const location = useLocation();
+  const navigationType = useNavigationType();
+  const today = useLocalToday();
   const inputRef = useRef(null);
+  // Where the search opens, decided once: coming Back to this page (from a result
+  // that took us elsewhere) returns to the search that was there; words handed over
+  // from the job list's empty message are searched at once; the sidebar link, which
+  // is a fresh visit, opens empty.
+  const startRef = useRef(undefined);
+  if (startRef.current === undefined) {
+    const handedOver = location.state?.searchWords;
+    startRef.current = navigationType === 'POP' ? recallSearchView() : (handedOver ? { q: handedOver } : null);
+  }
   const {
     q, setQ, scope, changeScope,
     filters, updateFilter, toggleArrayFilter, clearFilters, hasActiveFilters,
     page, setPage, results, loading,
     employees, machines, jobTypes,
     filtersError, retryFilters, refresh,
-  } = useSearch(user?.role);
+  } = useSearch(user?.role, startRef.current);
 
   // A stop form saved on the finish question's own job screen changes a job in these results.
   const subscribeJobChanged = useFinishQuestion()?.subscribeJobChanged;
@@ -245,6 +293,12 @@ export default function SearchPage() {
   // Fill the picker lists now so the first job window opens with them already in place.
   useEffect(() => { prefetchJobCardReferenceData(); }, []);
 
+  // A customer's jobs, in the job list. Customers are management's to see, so this only
+  // ever appears for them.
+  const openCustomerJobs = useCallback((companyId) => {
+    navigate(`/jobcards?company=${encodeURIComponent(companyId)}`);
+  }, [navigate]);
+
   const handleSeeAll = (groupKey) => {
     const targetScope = GROUP_TO_SCOPE[groupKey];
     if (groupKey === 'contacts') {
@@ -266,7 +320,17 @@ export default function SearchPage() {
     ...(canManage ? [{ key: 'companyName', label: 'Company', render: (v) => (v ? <Highlight text={v} query={q} /> : '-') }] : []),
     { key: 'status', label: 'Status', render: (v) => <StatusBadge status={v} /> },
     { key: 'priority', label: 'Priority', render: (v) => <PriorityBadge priority={v} /> },
-    { key: 'dueDate', label: 'Due Date', render: (v) => fmtDateShort(v) },
+    { key: 'assignees', label: 'Assigned To', render: (v) => <AssigneeAvatars assignees={v} /> },
+    { key: 'dueDate', label: 'Due Date', render: (v, row) => {
+      // Late by exactly the job list's rule, so a job reads the same in both places.
+      const late = isJobOverdue(row.dueDate, row.status, row.previousStatus, today);
+      return (
+        <span className={late ? 'overdue-date' : undefined}>
+          {fmtDateShort(v)}
+          {late && <span className="search-overdue-label">OVERDUE</span>}
+        </span>
+      );
+    } },
     { key: 'description', label: 'Description', render: (v) => <span className="search-truncate">{v ? <Highlight text={v} query={q} /> : '-'}</span> },
   ];
 
@@ -276,6 +340,8 @@ export default function SearchPage() {
     { key: 'contactName', label: 'Contact', render: (v) => (v ? <Highlight text={v} query={q} /> : '-') },
     { key: 'phone', label: 'Phone', render: (_, row) => { const v = row.type === 'contact' ? row.phone : row.contactPhone; return v ? <Highlight text={v} query={q} /> : '-'; } },
     { key: 'email', label: 'Email', render: (_, row) => { const v = row.type === 'contact' ? row.email : row.contactEmail; return v ? <Highlight text={v} query={q} /> : '-'; } },
+    { key: 'jobs', label: 'Jobs', render: (_, row) => (row.type === 'contact' && row.companyId
+      ? <CustomerJobsButton companyId={row.companyId} onOpen={openCustomerJobs} /> : '') },
   ];
 
   const activityColumns = [
@@ -488,11 +554,14 @@ export default function SearchPage() {
                     </button>
                   ))}
                   {key === 'contacts' && group.results.map(c => (
-                    <button key={c.id} type="button" className="search-preview-item clickable" onClick={() => navigate(`/contacts?open=${c.companyId}`)} aria-label={`Open contact ${c.companyName}`}>
-                      <strong><Highlight text={c.companyName} query={q} /></strong>
-                      {c.contactName && <span className="search-preview-detail"> (<Highlight text={c.contactName} query={q} />)</span>}
-                      {c.phone && <span className="search-preview-meta"><Highlight text={c.phone} query={q} /></span>}
-                    </button>
+                    <div key={c.id || c.companyId} className="search-preview-row">
+                      <button type="button" className="search-preview-item clickable" onClick={() => navigate(`/contacts?open=${c.companyId}`)} aria-label={`Open contact ${c.companyName}`}>
+                        <strong><Highlight text={c.companyName} query={q} /></strong>
+                        {c.contactName && <span className="search-preview-detail"> (<Highlight text={c.contactName} query={q} />)</span>}
+                        {c.phone && <span className="search-preview-meta"><Highlight text={c.phone} query={q} /></span>}
+                      </button>
+                      <CustomerJobsButton companyId={c.companyId} onOpen={openCustomerJobs} />
+                    </div>
                   ))}
                   {key === 'suppliers' && group.results.map(s => (
                     <button key={s.id} type="button" className="search-preview-item clickable" onClick={() => navigate(`/suppliers?open=${s.id}`)} aria-label={`Open supplier ${s.name}`}>

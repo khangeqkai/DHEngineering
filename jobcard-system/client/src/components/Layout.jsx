@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { Suspense, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth, useInactivityCountdown } from '../context/AuthContext';
 import { isManagement, can } from '../utils/roles';
 import InactivityWarningModal from './common/InactivityWarningModal';
@@ -39,6 +40,22 @@ export default function Layout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem('sidebarCollapsed') === 'true';
   });
+  // The name of the sidebar icon being pointed at or tabbed to. Only ever set while
+  // the sidebar is collapsed, when the words beside the icons are hidden.
+  const [navTip, setNavTip] = useState(null);
+  const tipProps = (label) => (sidebarCollapsed ? {
+    onMouseEnter: (e) => {
+      const r = e.currentTarget.getBoundingClientRect();
+      setNavTip({ label, top: r.top + r.height / 2, left: r.right + 8 });
+    },
+    onMouseLeave: () => setNavTip(null),
+    onFocus: (e) => {
+      const r = e.currentTarget.getBoundingClientRect();
+      setNavTip({ label, top: r.top + r.height / 2, left: r.right + 8 });
+    },
+    onBlur: () => setNavTip(null)
+  } : {});
+  useEffect(() => { setNavTip(null); }, [sidebarCollapsed]);
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('darkMode') === 'true';
   });
@@ -159,7 +176,7 @@ export default function Layout() {
         <nav className="sidebar-nav">
           <ul>
             <li>
-              <NavLink to="/jobcards" onClick={handleNavClick}>
+              <NavLink to="/jobcards" onClick={handleNavClick} {...tipProps('Job Cards')}>
                 <span className="nav-icon">
                   <ClipboardList size={18} />
                 </span>
@@ -167,7 +184,7 @@ export default function Layout() {
               </NavLink>
             </li>
             <li>
-              <NavLink to="/search" onClick={handleNavClick}>
+              <NavLink to="/search" onClick={handleNavClick} {...tipProps('Search')}>
                 <span className="nav-icon">
                   <Search size={18} />
                 </span>
@@ -179,7 +196,7 @@ export default function Layout() {
                 <li className="nav-divider" role="separator" aria-hidden="true"></li>
                 <li className="nav-group-label" aria-hidden="true">Set up</li>
                 <li>
-                  <NavLink to="/contacts" onClick={handleNavClick}>
+                  <NavLink to="/contacts" onClick={handleNavClick} {...tipProps('Customers')}>
                     <span className="nav-icon">
                       <UserCircle size={18} />
                     </span>
@@ -187,7 +204,7 @@ export default function Layout() {
                   </NavLink>
                 </li>
                 <li>
-                  <NavLink to="/suppliers" onClick={handleNavClick}>
+                  <NavLink to="/suppliers" onClick={handleNavClick} {...tipProps('Suppliers')}>
                     <span className="nav-icon">
                       <Truck size={18} />
                     </span>
@@ -195,7 +212,7 @@ export default function Layout() {
                   </NavLink>
                 </li>
                 <li>
-                  <NavLink to="/tags" onClick={handleNavClick}>
+                  <NavLink to="/tags" onClick={handleNavClick} {...tipProps('Job Options')}>
                     <span className="nav-icon">
                       <Tag size={18} />
                     </span>
@@ -203,7 +220,7 @@ export default function Layout() {
                   </NavLink>
                 </li>
                 <li>
-                  <NavLink to="/equipment" onClick={handleNavClick}>
+                  <NavLink to="/equipment" onClick={handleNavClick} {...tipProps('Equipment')}>
                     <span className="nav-icon">
                       <Wrench size={18} />
                     </span>
@@ -211,7 +228,7 @@ export default function Layout() {
                   </NavLink>
                 </li>
                 <li>
-                  <NavLink to="/users" onClick={handleNavClick}>
+                  <NavLink to="/users" onClick={handleNavClick} {...tipProps('Users')}>
                     <span className="nav-icon">
                       <Users size={18} />
                     </span>
@@ -220,7 +237,7 @@ export default function Layout() {
                 </li>
                 {can(user, 'pricing') && (
                   <li>
-                    <NavLink to="/labour-rates" onClick={handleNavClick}>
+                    <NavLink to="/labour-rates" onClick={handleNavClick} {...tipProps('Labour Rates')}>
                       <span className="nav-icon">
                         <DollarSign size={18} />
                       </span>
@@ -233,7 +250,7 @@ export default function Layout() {
             <li className="nav-divider" role="separator" aria-hidden="true"></li>
             {isManagement(user) && (
               <li>
-                <NavLink to="/statistics" onClick={handleNavClick}>
+                <NavLink to="/statistics" onClick={handleNavClick} {...tipProps('Statistics')}>
                   <span className="nav-icon">
                     <BarChart3 size={18} />
                   </span>
@@ -243,7 +260,7 @@ export default function Layout() {
             )}
             {can(user, 'activityTrail') && (
               <li>
-                <NavLink to="/activity" onClick={handleNavClick}>
+                <NavLink to="/activity" onClick={handleNavClick} {...tipProps('Activity Log')}>
                   <span className="nav-icon">
                     <Clock size={18} />
                   </span>
@@ -252,7 +269,7 @@ export default function Layout() {
               </li>
             )}
             <li>
-              <NavLink to="/settings" onClick={handleNavClick}>
+              <NavLink to="/settings" onClick={handleNavClick} {...tipProps('Settings')}>
                 <span className="nav-icon">
                   <Settings size={18} />
                 </span>
@@ -267,13 +284,14 @@ export default function Layout() {
             className="sidebar-toggle"
             onClick={() => setSidebarCollapsed(prev => !prev)}
             aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            {...tipProps(sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar')}
           >
             <span className="nav-icon">
               {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
             </span>
             <span className="nav-text">{sidebarCollapsed ? 'Expand' : 'Collapse'}</span>
           </button>
-          <button className="btn btn-secondary signout-btn" onClick={logout}>
+          <button className="btn btn-secondary signout-btn" onClick={logout} {...tipProps('Sign out')}>
             <span className="nav-icon">
               <LogOut size={18} />
             </span>
@@ -290,6 +308,11 @@ export default function Layout() {
           <Outlet />
         </Suspense>
       </main>
+
+      {sidebarCollapsed && navTip && createPortal(
+        <div className="nav-tooltip" style={{ top: navTip.top, left: navTip.left }}>{navTip.label}</div>,
+        document.body
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { X, Minus, Plus, RotateCw, LogOut, ArrowLeft } from 'lucide-react';
 import { api } from '../../services/api';
 import { capitalizeFirst, formatTime } from '../../utils/formatters';
 import { roundTo } from '../../../../server/src/shared/round';
+import { stopNoteMessage } from '../../../../server/src/shared/stopNote';
 import ToggleTiles from '../common/ToggleTiles';
 import Spinner from '../common/Spinner';
 import FieldError from '../common/FieldError';
@@ -76,6 +77,9 @@ function Counter({ value, onChange, inputRef, hero, ariaLabel }) {
   );
 }
 
+// Nothing shown yet: the heads-ups a fresh form (or one reopened, or gone Back from) starts with.
+const NO_NOTES_SHOWN = { zeroPieces: false, noMachine: false };
+
 export default function StopTimerForm({
   isOpen,
   jobCard,
@@ -107,6 +111,10 @@ export default function StopTimerForm({
   //               (error line and stored tiles stay) except the button is disabled and spins.
   const [machinesStatus, setMachinesStatus] = useState('loading');
   const [machineFilter, setMachineFilter] = useState('');
+  // Which heads-ups (0 pieces, no machine) a held Submit press has already shown. A press
+  // is held only for a heads-up not yet shown, so one that arises after the first hold
+  // (the machine unticked afterwards) is still seen before the save.
+  const [notesShown, setNotesShown] = useState(NO_NOTES_SHOWN);
   const [isCritical, setIsCritical] = useState(false);
   // The job details load (which decides Critical) and the machines load are
   // independent: a machines failure must never be read as "not Critical", so each
@@ -115,6 +123,7 @@ export default function StopTimerForm({
   const [jobError, setJobError] = useState(false);
   const formRef = useRef(null);
   const firstInputRef = useRef(null);
+  const descriptionRef = useRef(null);
   const modalId = useId();
   // A retry, or a fresh open, can outrun an in-flight load — a request counter lets
   // a stale reply ignore itself once a newer request has been made (same pattern as
@@ -186,6 +195,7 @@ export default function StopTimerForm({
   useEffect(() => {
     if (!isOpen || !jobCard?.id) return;
     setMachineFilter('');
+    setNotesShown(NO_NOTES_SHOWN);
     clearFieldErrors();
     // The run this form is about was JUST finished by this very stop, and it
     // already carries whether it needs the sign-off — decided once, at that same
@@ -300,6 +310,9 @@ export default function StopTimerForm({
         (pickedMachines.includes(b.machineNumber) ? 0 : 1)
       );
 
+  const zeroPieces = goodCount === 0 && scrapTotal === 0;
+  const noMachinePicked = (allMachines.length > 0 || machinesFailed) && selectedMachines.length === 0;
+
   const targetQty = item && parseFloat(item.qty) > 0 ? item.qty : null;
   const partTitle = [
     displayNumber != null ? `Part ${displayNumber}` : null,
@@ -316,6 +329,25 @@ export default function StopTimerForm({
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!canSubmit || loading) return;
+    // Junk in the note ("x", "aaaa", no letters) is marked on its box and not sent. The
+    // button stays pressable, so the worker is told why rather than left with a dead one.
+    const noteMessage = stopNoteMessage(entryForm.description);
+    if (noteMessage) {
+      setFieldErrors({ description: noteMessage });
+      descriptionRef.current?.focus();
+      return;
+    }
+    // Heads-ups never block, but they are seen: a press with one not yet shown is held
+    // and the note appears beside its section; the next press saves.
+    const unseenZero = zeroPieces && !notesShown.zeroPieces;
+    const unseenMachine = noMachinePicked && !notesShown.noMachine;
+    if (unseenZero || unseenMachine) {
+      setNotesShown(prev => ({
+        zeroPieces: prev.zeroPieces || zeroPieces,
+        noMachine: prev.noMachine || noMachinePicked
+      }));
+      return;
+    }
     const result = await onSubmit();
     // The server judges Critical at save time. If the job was made Critical after
     // this form loaded it, show the checklist now and mark what still needs an
@@ -323,6 +355,10 @@ export default function StopTimerForm({
     if (result?.inspectionRefusal) {
       setIsCritical(true);
       const { marks } = fieldErrorsFromRefusal(result.inspectionRefusal, INSPECTION_BOXES);
+      if (marks) setFieldErrors(marks);
+    }
+    if (result?.descriptionRefusal) {
+      const { marks } = fieldErrorsFromRefusal(result.descriptionRefusal, { description: 'description' });
       if (marks) setFieldErrors(marks);
     }
   };
@@ -415,6 +451,9 @@ export default function StopTimerForm({
                     />
                   </div>
                 </div>
+                {notesShown.zeroPieces && zeroPieces && (
+                  <p className="stf-soft-note">Recording 0 good, 0 scrap — press Submit again to confirm</p>
+                )}
               </section>
 
               {(allMachines.length > 0 || machinesFailed) && (
@@ -469,22 +508,30 @@ export default function StopTimerForm({
                       </div>
                     </>
                   )}
+                  {notesShown.noMachine && noMachinePicked && (
+                    <p className="stf-soft-note">No machine picked — press Submit again to confirm</p>
+                  )}
                 </section>
               )}
 
-              <section className="stf-section">
+              <section className={`stf-section${errorFor('description') ? ' field-error' : ''}`}>
                 <div className="stf-section-head">
                   <span className="stf-label">Description</span>
                   <span className="required">required</span>
                 </div>
                 <input
+                  id={`${modalId}-description`}
+                  ref={descriptionRef}
                   type="text"
                   className="stf-note-input stf-desc-input"
                   placeholder="What did you work on?"
                   value={entryForm.description || ''}
                   onChange={(e) => onFieldChange('description', e.target.value)}
                   onBlur={handleDescriptionBlur}
+                  aria-invalid={errorFor('description') ? true : undefined}
+                  aria-describedby={errorFor('description') ? `${modalId}-description-error` : undefined}
                 />
+                <FieldError id={`${modalId}-description-error`} message={errorFor('description')} />
               </section>
 
               {isCritical && !jobError && (
@@ -546,7 +593,7 @@ export default function StopTimerForm({
                 <button
                   type="button"
                   className="btn btn-secondary stf-back"
-                  onClick={onBack}
+                  onClick={() => { setNotesShown(NO_NOTES_SHOWN); onBack(); }}
                   disabled={loading}
                 >
                   <ArrowLeft size={16} />

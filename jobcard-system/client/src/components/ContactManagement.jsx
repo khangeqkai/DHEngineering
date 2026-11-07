@@ -33,6 +33,15 @@ const COMPANY_BOX_VALUE = { companyName: 'name', address: 'address', notes: 'not
 // these — a person who has left must not read as a current contact.
 const livePeople = (company) => (company.people || []).filter(p => !p.archived);
 
+// What the search box looks through for a customer: its people's names, emails and phone
+// numbers. Only people still working there count — an archived person is hidden from the
+// People column, so a search must not find a customer by someone the row doesn't show.
+const searchFieldsOf = (company) => {
+  const live = livePeople(company);
+  const join = (key) => live.map(p => p[key]).filter(Boolean).join(', ');
+  return { peopleNames: join('contactName'), peopleEmails: join('email'), peoplePhones: join('phone') };
+};
+
 export default function ContactManagement() {
   const [companies, setCompanies] = useState([]);
   // What the table is actually showing right now (after its own search box has
@@ -83,7 +92,7 @@ export default function ContactManagement() {
         const visible = (showArchived ? data : data.filter(c => !c.archived))
           // Flattened so the search box finds a customer by the person you deal
           // with there, not just by the company name.
-          .map(c => ({ ...c, peopleNames: (c.people || []).map(p => p.contactName).filter(Boolean).join(', ') }));
+          .map(c => ({ ...c, ...searchFieldsOf(c) }));
         setCompanies(visible);
         return visible;
       },
@@ -173,7 +182,7 @@ export default function ContactManagement() {
     const target = allCompaniesRef.current.find(c => String(c.id) === openId);
     if (target) {
       if (target.archived) setShowArchived(true);
-      handleEdit({ ...target, peopleNames: (target.people || []).map(p => p.contactName).filter(Boolean).join(', ') });
+      handleEdit({ ...target, ...searchFieldsOf(target) });
     } else {
       toast.error('That customer could not be found', { id: 'customer-open-missing' });
     }
@@ -223,7 +232,7 @@ export default function ContactManagement() {
     setSaving(true);
     try {
       await api.createContact({ companyId: editingCompany.id, ...person });
-      toast.success('Person updated');
+      toast.success('Person added');
       await refresh();
       return true;
     } catch (err) {
@@ -476,7 +485,8 @@ export default function ContactManagement() {
             loading={loading}
             rowClassName={(row) => row.archived ? 'inactive-row' : ''}
             searchable
-            searchKeys={['name', 'peopleNames', 'address']}
+            searchKeys={['name', 'peopleNames', 'peopleEmails', 'address']}
+            searchDigitKeys={['peoplePhones']}
             searchPlaceholder="Search customers…"
             onVisibleRowsChange={setVisibleCompanies}
             emptyState={{

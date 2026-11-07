@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
 import { toTitleCase, capitalizeFirst } from '../utils/formatters';
-import { Plus, Edit2, Save, Archive, ArchiveRestore, History } from 'lucide-react';
+import { Plus, Edit2, Save, Archive, ArchiveRestore, History, Check } from 'lucide-react';
 import PageHeader from './common/PageHeader';
 import ExportButton from './common/ExportButton';
 import EntityActivityLog from './common/EntityActivityLog';
@@ -55,6 +55,8 @@ export default function TagManagement({ mode = 'options' }) {
   const [formData, setFormData] = useState({ name: '', machineNumber: '', description: '' });
   const [formCategory, setFormCategory] = useState(isEquipment ? 'equipment' : 'treatment');
   const [saving, setSaving] = useState(false);
+  // What "Create and add another" just saved, shown inside the form until the window is left.
+  const [addedName, setAddedName] = useState('');
   // One trail for the whole page — options and machines are managed side by side here.
   const [showActivityLog, setShowActivityLog] = useState(false);
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
@@ -130,19 +132,22 @@ export default function TagManagement({ mode = 'options' }) {
   const resetForm = () => {
     setShowForm(false);
     setEditingItem(null);
+    setAddedName('');
     setFormData({ name: '', machineNumber: '', description: '' });
     resetFieldErrors();
   };
 
   const openAddForm = () => {
     resetFieldErrors();
+    setAddedName('');
     setEditingItem(null);
     setFormData({ name: '', machineNumber: '', description: '' });
     setFormCategory(selectedCategory);
     setShowForm(true);
   };
 
-  const handleSubmit = async (e) => {
+  // `another` is "Create and add another": the window stays open, empty and ready for the next.
+  const handleSubmit = async (e, another = false) => {
     e.preventDefault();
     // Each field only tidies itself on blur — hitting Enter from inside the box
     // submits the form directly and never fires that blur, so the same formatting
@@ -201,7 +206,15 @@ export default function TagManagement({ mode = 'options' }) {
         await reloadTags();
       }
       bumpActivity();
-      resetForm();
+      if (another) {
+        const label = isFormEquipment ? (name ? `${machineNumber} ${name}` : machineNumber) : name;
+        setAddedName(label);
+        resetFieldErrors();
+        setFormData({ name: '', machineNumber: '', description: '' });
+        document.getElementById(isFormEquipment ? 'machineNumber' : 'tagName')?.focus();
+      } else {
+        resetForm();
+      }
     } catch (err) {
       // A refusal naming one of the boxes (the server's comma refusal on the number,
       // say) marks that box; anything else is a pop-up.
@@ -215,6 +228,7 @@ export default function TagManagement({ mode = 'options' }) {
   const handleEditTag = (tag) => {
     resetFieldErrors();
     setEditingItem(tag);
+    setAddedName('');
     setFormData({ name: tag.name, machineNumber: '', description: '' });
     setFormCategory(selectedCategory);
     setShowForm(true);
@@ -247,6 +261,7 @@ export default function TagManagement({ mode = 'options' }) {
   const handleEditMachine = (m) => {
     resetFieldErrors();
     setEditingItem(m);
+    setAddedName('');
     setFormData(machineForm(m));
     setFormCategory('equipment');
     setShowForm(true);
@@ -368,12 +383,20 @@ export default function TagManagement({ mode = 'options' }) {
                 <FieldError {...errorProps('tagName')} message={errorFor('tagName')} />
               </div>
             )}
+            {addedName && (
+              <p className="tag-added-line" role="status"><Check size={14} /> Added: {addedName}</p>
+            )}
           </form>
         </BottomSheet.Body>
         <BottomSheet.Footer>
           <button type="submit" form="tag-form" className="btn btn-primary" disabled={saving}>
             <Save size={14} /> {saving ? 'Saving…' : saveLabel}
           </button>
+          {!editingItem && (
+            <button type="button" className="btn btn-secondary" disabled={saving} onClick={(e) => handleSubmit(e, true)}>
+              <Plus size={14} /> Create and add another
+            </button>
+          )}
         </BottomSheet.Footer>
       </BottomSheet>
 

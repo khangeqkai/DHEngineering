@@ -298,6 +298,7 @@ class ApiService {
   updateUser(id, userData) { return this._put(`/auth/users/${id}`, userData); }
   deactivateUser(id) { return this._post(`/auth/users/${id}/deactivate`); }
   activateUser(id) { return this._post(`/auth/users/${id}/activate`); }
+  resetUserPin(id, pin) { return this._post(`/auth/users/${id}/reset-pin`, { pin }); }
 
   async changePassword(currentPassword, newPassword) {
     const result = await this._put('/auth/change-password', { currentPassword, newPassword });

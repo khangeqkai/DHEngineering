@@ -43,7 +43,7 @@ function findAll(files, rx, why, { prepare = (t) => t } = {}) {
 }
 
 test('a box hint says what to do, never shows a sample value', () => {
-  const hits = findAll(screens, /placeholder=\{?["'`](e\.g\.|eg\b|for example)[^"'`]*["'`]/gi, 'sample value as a hint');
+  const hits = findAll(screens, /placeholder['"]?\s*[=:]\s*\{?["'`](e\.g\.|eg\b|for example)[^"'`]*["'`]/gi, 'sample value as a hint');
   assert.deepEqual(hits, []);
 });
 

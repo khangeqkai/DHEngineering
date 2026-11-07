@@ -143,10 +143,13 @@ export default function CustomersTab({
                 label: 'Finished On Time',
                 align: 'right',
                 sortable: true,
-                render: (val) => val !== null ? (
-                  <span className={`kpi-badge ${val >= 90 ? 'success' : val >= 75 ? 'warning' : 'danger'}`}>
-                    {val}%
-                  </span>
+                render: (val, row) => val !== null ? (
+                  <>
+                    <span className={`kpi-badge ${val >= 90 ? 'success' : val >= 75 ? 'warning' : 'danger'}`}>
+                      {val}%
+                    </span>
+                    <span className="kpi-count"> {row.onTimeCount} of {row.onTimeCount + row.lateCount}</span>
+                  </>
                 ) : (
                   <span className="stat-dash">—</span>
                 )

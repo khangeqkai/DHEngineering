@@ -1,0 +1,12 @@
+/* The PIN box and its "Make one for me" button sit side by side. */
+.reset-pin-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
+}
+
+.reset-pin-row input {
+  width: 8ch;
+  flex: none;
+  letter-spacing: var(--tracking-wider);
+}

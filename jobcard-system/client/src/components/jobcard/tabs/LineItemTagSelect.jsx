@@ -31,6 +31,8 @@ export default function LineItemTagSelect({
   // can't be reached right now) — see utils/attachmentWarnings.js.
   filesUnchecked = false,
   onAttach,
+  // Opens one attached file (the { name, storedName } entry) in the file viewer.
+  onViewFile,
   error = null
 }) {
   const selected = value ? value.split(',').filter(Boolean) : [];
@@ -44,16 +46,21 @@ export default function LineItemTagSelect({
   // checked", never a claim that something is attached. Without an attach handler
   // (e.g. the create form), fall back to a passive nudge.
   let warningPill = null;
-  if (onAttach && isDeclared) {
-    warningPill = warning ? (
-      <button type="button" className="lit-attach lit-attach--missing" onClick={onAttach} title="Add a file for this part">
-        <AlertTriangle size={14} aria-hidden="true" /> Add file
-      </button>
-    ) : (
+  const listsFiles = isDeclared && !warning && (onAttach || (onViewFile && attachedFiles.length > 0));
+  if (listsFiles) {
+    warningPill = (
       <div className="lit-attach-done">
         {attachedFiles.length > 0
-          ? attachedFiles.map((name, i) => (
-              <span key={i} className="lit-attach-file" title={name}><Check size={14} aria-hidden="true" /> {name}</span>
+          ? attachedFiles.map((file) => (
+              <button
+                type="button"
+                key={file.storedName}
+                className="lit-attach-file"
+                title={`Open ${file.name}`}
+                onClick={() => onViewFile?.(file)}
+              >
+                <Check size={14} aria-hidden="true" /> {file.name}
+              </button>
             ))
           : (
             <span
@@ -63,10 +70,18 @@ export default function LineItemTagSelect({
               Files not checked
             </span>
           )}
-        <button type="button" className="lit-attach lit-attach--add" onClick={onAttach} title="Add another file">
-          + Add
-        </button>
+        {onAttach && (
+          <button type="button" className="lit-attach lit-attach--add" onClick={onAttach} title="Add another file">
+            + Add
+          </button>
+        )}
       </div>
+    );
+  } else if (warning && onAttach && isDeclared) {
+    warningPill = (
+      <button type="button" className="lit-attach lit-attach--missing" onClick={onAttach} title="Add a file for this part">
+        <AlertTriangle size={14} aria-hidden="true" /> Add file
+      </button>
     );
   } else if (warning) {
     warningPill = <span className="lit-missing-file" title="No file added yet"><AlertTriangle size={14} aria-hidden="true" /> No file yet</span>;
@@ -108,7 +123,11 @@ export default function LineItemTagSelect({
 
   const toggle = (val) => {
     if (naValue && val === naValue) {
-      onChange(selected.includes(naValue) ? '' : naValue);
+      const choosing = !selected.includes(naValue);
+      onChange(choosing ? naValue : '');
+      // N/A is the whole answer, so choosing it is done — the list closes. The other
+      // picks stay open because several can be chosen.
+      if (choosing) setOpen(false);
       return;
     }
     const current = selected.filter(v => v && v !== naValue);

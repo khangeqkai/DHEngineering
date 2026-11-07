@@ -104,7 +104,7 @@ function dayMonth(v) {
 const clock = (v) => formatTime(v, { hour: '2-digit', minute: '2-digit' });
 
 // "Sat 27 Sep, 14:30"
-function dayTime(v) {
+export function dayTime(v) {
   const d = toDate(v);
   return d ? `${dayMonth(v)}, ${clock(v)}` : '';
 }

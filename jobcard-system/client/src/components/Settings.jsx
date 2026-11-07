@@ -4,6 +4,7 @@ import BottomSheet from './common/BottomSheet';
 import ConfirmDialog from './common/ConfirmDialog';
 import Spinner from './common/Spinner';
 import { useSettings } from '../hooks/useSettings';
+import { roleLabel } from '../utils/roleLabels';
 import SecurityCard from './settings/SecurityCard';
 import FoldersCard from './settings/FoldersCard';
 import HomeAccessCard from './settings/HomeAccessCard';
@@ -46,6 +47,77 @@ export default function Settings() {
       <PageHeader title="Settings" />
 
       <div className="settings-grid">
+        {/* Your account is first: it is the thing people open Settings to change. */}
+        <div className="card">
+          <div className="card-header">
+            <h2>Your account</h2>
+          </div>
+          <div className="card-body">
+            <div className="setting-item">
+              <div className="setting-info">
+                <div className="setting-label">Change PIN</div>
+                <div className="setting-description">
+                  Update your 4-digit PIN
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={s.openPasswordModal}
+              >
+                Change PIN
+              </button>
+            </div>
+            {s.canManage && (
+              <dl className="info-list">
+                <div className="info-item">
+                  <dt>Username</dt>
+                  <dd>{s.user?.username}</dd>
+                </div>
+                <div className="info-item">
+                  <dt>Display Name</dt>
+                  <dd>{s.user?.name}</dd>
+                </div>
+                <div className="info-item">
+                  <dt>Role</dt>
+                  <dd>{roleLabel(s.user?.role)}</dd>
+                </div>
+              </dl>
+            )}
+          </div>
+        </div>
+
+        {/* The cards below edit stored settings, so they only appear once those have
+            loaded — before that their boxes hold blanks that Save would write over the
+            real settings. A failed load offers another try in their place. */}
+        {s.canManage && s.loadFailed && (
+          <div className="card full-width">
+            <EmptyState
+              icon="cpu"
+              title="Couldn't load the settings"
+              description="The security, job number, home access and folder settings can't be changed until they load."
+              actionLabel="Try again"
+              onAction={s.loadSettings}
+            />
+          </div>
+        )}
+
+        {s.canManage && s.settings && <SecurityCard s={s} />}
+
+        {/* Short cards come first so they pair up two to a row for admins and managers
+            alike (account, sign-out, job numbering, home access); the wide cards follow. */}
+        {/* Home access: the tunnel's public address (any manager can read it out)
+            and the home access code (admin-only to set, like any security setting). */}
+        {s.canManage && s.settings && <HomeAccessCard s={s} />}
+
+        {/* The job-folders base path stays admin-only: it decides where every job's
+            files (and backups) are written, so a manager can't repoint it to a
+            personal/removable drive. */}
+        {s.canSeeSystemData && s.settings && <FoldersCard s={s} />}
+
+        {/* Backups stay admin-only: a backup carries the whole database, pricing included. */}
+        {s.canSeeSystemData && <DataBackupCard s={s} />}
+
         <div className="card">
           <div className="card-header">
             <h2>Appearance</h2>
@@ -71,34 +143,13 @@ export default function Settings() {
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-header">
-            <h2>Account</h2>
-          </div>
-          <div className="card-body">
-            <div className="setting-item">
-              <div className="setting-info">
-                <div className="setting-label">Change PIN</div>
-                <div className="setting-description">
-                  Update your 4-digit PIN
-                </div>
-              </div>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={s.openPasswordModal}
-              >
-                Change PIN
-              </button>
-            </div>
-          </div>
-        </div>
 
+        {/* Bottom of the page: facts about this computer, rarely needed. */}
         {s.canManage && (
           <>
-            <div className="card">
+            <div className="card full-width">
               <div className="card-header">
-                <h2>Application info</h2>
+                <h2>About this computer</h2>
               </div>
               <div className="card-body">
                 <dl className="info-list">
@@ -124,36 +175,9 @@ export default function Settings() {
                     <dd>{s.appInfo?.isDev ? 'Development' : 'Production'}</dd>
                   </div>
                 </dl>
-              </div>
-            </div>
 
-            <div className="card">
-              <div className="card-header">
-                <h2>Current user</h2>
-              </div>
-              <div className="card-body">
-                <dl className="info-list">
-                  <div className="info-item">
-                    <dt>Username</dt>
-                    <dd>{s.user?.username}</dd>
-                  </div>
-                  <div className="info-item">
-                    <dt>Display Name</dt>
-                    <dd>{s.user?.name}</dd>
-                  </div>
-                  <div className="info-item">
-                    <dt>Role</dt>
-                    <dd>{s.user?.role}</dd>
-                  </div>
-                </dl>
-              </div>
-            </div>
-
-            <div className="card full-width">
-              <div className="card-header">
-                <h2>Available printers</h2>
-              </div>
-              <div className="card-body">
+                <div className="settings-printers">
+                  <div className="setting-label">Printers</div>
                 {s.loadingPrinters ? (
                   <p className="setting-description">Loading printers…</p>
                 ) : s.printers.length === 0 ? (
@@ -182,39 +206,11 @@ export default function Settings() {
                     </tbody>
                   </table>
                 )}
+                </div>
               </div>
             </div>
           </>
         )}
-
-        {/* The cards below edit stored settings, so they only appear once those have
-            loaded — before that their boxes hold blanks that Save would write over the
-            real settings. A failed load offers another try in their place. */}
-        {s.canManage && s.loadFailed && (
-          <div className="card full-width">
-            <EmptyState
-              icon="cpu"
-              title="Couldn't load the settings"
-              description="The security, job number, home access and folder settings can't be changed until they load."
-              actionLabel="Try again"
-              onAction={s.loadSettings}
-            />
-          </div>
-        )}
-
-        {s.canManage && s.settings && <SecurityCard s={s} />}
-
-        {/* Home access: the tunnel's public address (any manager can read it out)
-            and the home access code (admin-only to set, like any security setting). */}
-        {s.canManage && s.settings && <HomeAccessCard s={s} />}
-
-        {/* The job-folders base path stays admin-only: it decides where every job's
-            files (and backups) are written, so a manager can't repoint it to a
-            personal/removable drive. */}
-        {s.canSeeSystemData && s.settings && <FoldersCard s={s} />}
-
-        {/* Backups stay admin-only: a backup carries the whole database, pricing included. */}
-        {s.canSeeSystemData && <DataBackupCard s={s} />}
 
         {s.canManage && (
           <div className="card full-width">

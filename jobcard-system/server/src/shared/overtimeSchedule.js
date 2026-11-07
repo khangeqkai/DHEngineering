@@ -84,4 +84,73 @@ function scheduleToWholeHours(sched) {
   return { schedule, changed };
 }
 
-module.exports = { DAYS, TIERS, DEFAULT_DAY, cleanDayBlocks, gridFromBlocks, blocksFromGrid, scheduleDayToWholeHours, scheduleToWholeHours };
+const SHORT_DAY = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+
+// 0-23 -> "12 am", "3 pm"; 24 (the end of the day) reads as midnight.
+function clockWord(h) {
+  const hour = h % 24;
+  const suffix = hour < 12 ? 'am' : 'pm';
+  const twelve = hour % 12 === 0 ? 12 : hour % 12;
+  return { text: `${twelve}`, suffix };
+}
+
+// The hour ranges of one day that carry `tier`, as words: "3-5 pm", "5 pm-6 am", or ''
+// when the tier covers the whole day (the day name alone says it). Returns null when the
+// tier has no hours that day.
+function dayRangesWords(blocks, tier) {
+  const grid = gridFromBlocks(cleanDayBlocks(blocks).length ? cleanDayBlocks(blocks) : DEFAULT_DAY);
+  const ranges = [];
+  let start = null;
+  for (let h = 0; h <= 24; h++) {
+    const on = h < 24 && grid[h] === tier;
+    if (on && start === null) start = h;
+    if (!on && start !== null) { ranges.push([start, h]); start = null; }
+  }
+  if (ranges.length === 0) return null;
+  if (ranges.length === 1 && ranges[0][0] === 0 && ranges[0][1] === 24) return '';
+  return ranges.map(([a, b]) => {
+    const from = clockWord(a);
+    const to = clockWord(b);
+    return from.suffix === to.suffix ? `${from.text}\u2013${to.text} ${to.suffix}` : `${from.text} ${from.suffix}\u2013${to.text} ${to.suffix}`;
+  }).join(' and ');
+}
+
+// Where a tier applies in the weekly schedule, in plain words read straight from the
+// painted hours: "Mon\u2013Fri 3\u20135 pm", "Sat", "Mon\u2013Fri 5 pm\u20136 am; Sat". Days with the same hours
+// are joined, consecutive days become a range. "none" when the tier is not used.
+function describeTierHours(schedule, tier) {
+  const groups = [];
+  for (const d of DAYS) {
+    const words = dayRangesWords(schedule && schedule[d], tier);
+    if (words === null) continue;
+    const found = groups.find(g => g.words === words);
+    if (found) found.days.push(d); else groups.push({ words, days: [d] });
+  }
+  if (groups.length === 0) return 'none';
+  const dayWords = (days) => {
+    if (days.length === DAYS.length) return 'Every day';
+    const runs = [];
+    for (const d of days) {
+      const last = runs[runs.length - 1];
+      if (last && DAYS.indexOf(d) === DAYS.indexOf(last[last.length - 1]) + 1) last.push(d); else runs.push([d]);
+    }
+    return runs.map(r => (r.length === 1 ? SHORT_DAY[r[0]] : r.length === 2 ? `${SHORT_DAY[r[0]]}, ${SHORT_DAY[r[1]]}` : `${SHORT_DAY[r[0]]}\u2013${SHORT_DAY[r[r.length - 1]]}`)).join(', ');
+  };
+  return groups.map(g => `${dayWords(g.days)}${g.words ? ` ${g.words}` : ''}`).join('; ');
+}
+
+// The same, capped for a one-line summary: a tier whose hours fall into more than two
+// distinct day-patterns would read as a paragraph, so it just says it varies. `where` names
+// the place the full picture is ("below" / "above" the line).
+const MAX_SUMMARY_PATTERNS = 2;
+function summariseTierHours(schedule, tier, where) {
+  const patterns = new Set();
+  for (const d of DAYS) {
+    const words = dayRangesWords(schedule && schedule[d], tier);
+    if (words !== null) patterns.add(words);
+  }
+  if (patterns.size > MAX_SUMMARY_PATTERNS) return `varies by day, see the schedule ${where}`;
+  return describeTierHours(schedule, tier);
+}
+
+module.exports = { DAYS, TIERS, DEFAULT_DAY, describeTierHours, summariseTierHours, cleanDayBlocks, gridFromBlocks, blocksFromGrid, scheduleDayToWholeHours, scheduleToWholeHours };

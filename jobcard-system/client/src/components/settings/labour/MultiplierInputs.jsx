@@ -1,11 +1,12 @@
 import FieldError from '../../common/FieldError';
 import { formatMoney } from '../../../utils/formatters';
+import { summariseTierHours } from '../../../../../server/src/shared/overtimeSchedule';
 
 // The three overtime rate multipliers. Each tier charges the job's base labour rate
 // times its multiplier, so one rate feeds them all.
 export default function MultiplierInputs({
   ot1Mult, setOt1Mult, ot2Mult, setOt2Mult, holidayMult, setHolidayMult,
-  onSave, saving, ot1Error, ot2Error, holidayError, defaultRate
+  onSave, saving, ot1Error, ot2Error, holidayError, defaultRate, dirty, schedule
 }) {
   // Called as a plain function (not <Field/>) so the number inputs stay mounted across
   // renders and typing never loses focus.
@@ -40,7 +41,7 @@ export default function MultiplierInputs({
       </div>
       <FieldError id={`${key}-error`} message={error} />
       <span className="mult-worked">{worked(value)}</span>
-      <span className="setting-description">{hint}</span>
+      {hint && <span className="setting-description">{hint}</span>}
     </div>
   );
 
@@ -55,14 +56,21 @@ export default function MultiplierInputs({
           of $50 with a ×1.5 multiplier bills at $75 an hour.
         </p>
         <div className="mult-grid">
-          {field('ot1Mult', 'Overtime 1', 'Standard overtime (e.g. weeknights).', ot1Mult, setOt1Mult, ot1Error)}
-          {field('ot2Mult', 'Overtime 2', 'Higher overtime (e.g. late nights, weekends).', ot2Mult, setOt2Mult, ot2Error)}
+          {field('ot1Mult', 'Overtime 1', '', ot1Mult, setOt1Mult, ot1Error)}
+          {field('ot2Mult', 'Overtime 2', '', ot2Mult, setOt2Mult, ot2Error)}
           {field('holidayMult', 'Public holiday', 'Charged on marked holiday dates.', holidayMult, setHolidayMult, holidayError)}
         </div>
+        {/* Read from the hours painted on the weekly schedule, never a fixed sentence. */}
+        {schedule && (
+          <p className="setting-description mult-from-schedule">
+            From your schedule: Overtime 1 = {summariseTierHours(schedule, 'ot1', 'below')} {'\u00b7'} Overtime 2 = {summariseTierHours(schedule, 'ot2', 'below')}
+          </p>
+        )}
         <div className="sched-save">
           <button type="button" className="btn btn-primary" onClick={onSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save multipliers'}
           </button>
+          {dirty && <span className="unsaved-pill"><span className="unsaved-pill-dot" aria-hidden="true" />Unsaved changes</span>}
         </div>
       </div>
     </div>

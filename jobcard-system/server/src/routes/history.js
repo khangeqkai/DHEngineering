@@ -1,7 +1,7 @@
 const express = require('express');
 const logger = require('../utils/logger');
 const { authenticate, requirePermission, requireManagement } = require('../middleware/auth');
-const { historyQueries, db } = require('../db/database');
+const { historyQueries, db, HISTORY_RECORD_NAME_SQL } = require('../db/database');
 const { readEntries } = require('./jobcard-helpers');
 const { officeDayStart, officeDayEnd } = require('../utils/officeTime');
 
@@ -19,6 +19,9 @@ function shapeEntry(h, read) {
     entityId: h.entity_id,
     // A job's entries also name the job (HISTORY_JOB_NUMBER_SQL) — null otherwise.
     jobNumber: h.job_number ?? null,
+    // Whether the job this entry is about still exists (null for anything that isn't a job,
+    // and for reads that don't look) — a deleted job's number is shown as plain text.
+    jobExists: h.job_exists == null ? null : !!h.job_exists,
     recordName: h.record_name ?? null,
     action: h.action,
     userId: h.user_id,
@@ -104,7 +107,9 @@ router.get('/entity/:entityType', authenticate, requireManagement, (req, res) =>
       .prepare(`SELECT COUNT(*) as count FROM history WHERE entity_type IN (${placeholders})`)
       .get(...types);
     const history = db
-      .prepare(`SELECT * FROM history WHERE entity_type IN (${placeholders}) ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`)
+      // record_name is the record's current name, so a change that didn't touch the name
+      // still reads "changed Kestrel Pumps' phone number", not "a deleted customer".
+      .prepare(`SELECT h.*, ${HISTORY_RECORD_NAME_SQL} AS record_name FROM history h WHERE h.entity_type IN (${placeholders}) ORDER BY h.created_at DESC, h.id DESC LIMIT ? OFFSET ?`)
       .all(...types, PAGE_SIZE, offset);
 
     res.json({
@@ -112,6 +117,7 @@ router.get('/entity/:entityType', authenticate, requireManagement, (req, res) =>
         id: h.id,
         entityType: h.entity_type,
         entityId: h.entity_id,
+        recordName: h.record_name ?? null,
         action: h.action,
         userId: h.user_id,
         userName: h.user_name,

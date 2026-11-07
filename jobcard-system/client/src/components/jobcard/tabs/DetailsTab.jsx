@@ -242,6 +242,7 @@ export default function DetailsTab({
 
       <ItemsTab
         jobCardId={jobCardId}
+        jobIsCritical={isCriticalLevel(formData.qualityLevel)}
         lineItems={lineItems}
         addLineItem={addLineItem}
         updateLineItem={updateLineItem}

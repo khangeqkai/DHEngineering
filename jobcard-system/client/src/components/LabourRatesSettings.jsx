@@ -13,15 +13,20 @@ import './settings/labour/LabourRates.css';
 export default function LabourRatesSettings() {
   const { dialogState, showConfirm, handleConfirm, handleCancel } = useConfirmDialog();
   const lr = useLabourRates({ showConfirm });
-  // Painted hours and added holidays wait on their Save button; leaving the page (or the
-  // window) with either would lose them, so it is asked about first.
-  useLeaveGuard(lr.scheduleDirty || lr.holidaysDirty, showConfirm, {
-    title: 'Leave without saving the schedule?',
-    message: lr.scheduleDirty && lr.holidaysDirty
-      ? 'Your changes to the hours and the holidays will be lost.'
-      : lr.scheduleDirty ? 'Your changes to the hours will be lost.' : 'Your changes to the holidays will be lost.',
+  // Any card with edits waiting on its Save button: leaving the page (or the window)
+  // would lose them, so it is asked about first, naming the cards.
+  const unsavedCards = [
+    lr.defaultRateDirty && 'default hourly rate',
+    lr.multipliersDirty && 'overtime multipliers',
+    lr.scheduleDirty && 'weekly schedule',
+    lr.holidaysDirty && 'public holidays',
+    lr.timezoneDirty && 'time zone'
+  ].filter(Boolean);
+  useLeaveGuard(unsavedCards.length > 0, showConfirm, {
+    title: 'Leave without saving?',
+    message: `Unsaved: ${unsavedCards.join(', ')}. Leave anyway?`,
     stayLabel: 'Stay',
-    leaveLabel: 'Leave without saving'
+    leaveLabel: 'Leave anyway'
   });
 
   if (lr.loading) {
@@ -57,6 +62,7 @@ export default function LabourRatesSettings() {
         <DefaultRateCard
           defaultRate={lr.defaultRate} setDefaultRate={lr.setDefaultRate}
           onSave={lr.handleSaveDefaultRate} saving={lr.savingDefaultRate}
+          dirty={lr.defaultRateDirty}
           error={lr.errorFor('defaultRate')}
         />
         <MultiplierInputs
@@ -64,6 +70,8 @@ export default function LabourRatesSettings() {
           ot2Mult={lr.ot2Mult} setOt2Mult={lr.setOt2Mult}
           holidayMult={lr.holidayMult} setHolidayMult={lr.setHolidayMult}
           onSave={lr.handleSaveMultipliers} saving={lr.savingMultipliers}
+          dirty={lr.multipliersDirty}
+          schedule={lr.schedule}
           ot1Error={lr.errorFor('ot1Mult')}
           ot2Error={lr.errorFor('ot2Mult')}
           holidayError={lr.errorFor('holidayMult')}
@@ -88,6 +96,7 @@ export default function LabourRatesSettings() {
         <TimezoneCard
           timezone={lr.timezone} setTimezone={lr.setTimezone}
           onSave={lr.handleSaveTimezone} saving={lr.savingTimezone}
+          dirty={lr.timezoneDirty}
           error={lr.errorFor('timezone')}
         />
       </div>

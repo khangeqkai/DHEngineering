@@ -12,6 +12,8 @@ import OnTimeTab from './statistics/OnTimeTab';
 import MachinesTab from './statistics/MachinesTab';
 import CustomersTab from './statistics/CustomersTab';
 import EmptyState from './common/EmptyState';
+import JobCardModal from './jobcard/JobCardModal';
+import { prefetchJobCardReferenceData } from './jobcard/useJobCardReferenceData';
 import { useFieldErrors, scrollFieldIntoView } from '../hooks/useFieldErrors';
 import { BarChart3, Users, AlertTriangle, Cpu, Building2 } from 'lucide-react';
 import { todayIsoDate } from '../utils/formatters';
@@ -35,6 +37,13 @@ export default function Statistics() {
   const [activeTab, setActiveTab] = useState('overview');
   const [exporting, setExporting] = useState(false);
   const reqIdRef = useRef(0);
+  // A job number opens the job window over this page. Open/closed is kept apart from
+  // which job, so closing doesn't blank the id while the window is saving on its way out.
+  const [modalJobId, setModalJobId] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const openJob = (jobId) => { setModalJobId(jobId); setModalOpen(true); };
+  // Fill the picker lists now so the job window opens with them already in place.
+  useEffect(() => { prefetchJobCardReferenceData(); }, []);
   // One mark covers the pair of date boxes together — its value is both dates as a
   // pair, so editing either one moves the mark off whatever text it was raised
   // against.
@@ -129,6 +138,8 @@ export default function Statistics() {
 
   const summary = data?.summary || {};
   const range = data?.range || {};
+  // This month is not finished yet, so its figures are "so far".
+  const rangeLabel = range.preset === 'this_month' && range.label ? `${range.label} so far` : range.label;
 
   return (
     <div className="statistics-page page-enter">
@@ -140,7 +151,7 @@ export default function Statistics() {
         customEndDate={customEndDate}
         setCustomEndDate={setCustomEndDate}
         customRangeError={errorFor('customRange')}
-        rangeLabel={range.label}
+        rangeLabel={rangeLabel}
         loading={loading}
         exporting={exporting}
         hasData={!!data}
@@ -169,7 +180,8 @@ export default function Statistics() {
           <StatisticsKpis
             summary={summary}
             activeWorkersCount={(data?.workerLeaderboard || []).length}
-            rangeLabel={range.label}
+            rangeLabel={rangeLabel}
+            sameSpanLastMonth={data?.sameSpanLastMonth || null}
             loading={loading}
           />
 
@@ -244,6 +256,7 @@ export default function Statistics() {
               summary={summary}
               delayedJobsList={data?.delayedJobsList || []}
               loading={loading}
+              onOpenJob={openJob}
             />
           </div>
 
@@ -266,6 +279,13 @@ export default function Statistics() {
           </div>
         </>
       )}
+
+      <JobCardModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        jobCardId={modalJobId}
+        onSuccess={fetchStatistics}
+      />
     </div>
   );
 }

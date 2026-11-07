@@ -21,9 +21,14 @@ export const SORT_VALUE_GETTERS = {
   updatedAt: (c) => (c.updatedAt ? new Date(c.updatedAt).getTime() : null)
 };
 
-export default function useJobCardSort(cards) {
-  const [sortBy, setSortBy] = useState(null);
-  const [sortDir, setSortDir] = useState(null);
+export default function useJobCardSort(cards, initial = null) {
+  const [sortBy, setSortBy] = useState(initial?.sortBy ?? null);
+  const [sortDir, setSortDir] = useState(initial?.sortDir ?? null);
+
+  const resetSort = useCallback(() => {
+    setSortBy(null);
+    setSortDir(null);
+  }, []);
 
   const handleSort = useCallback((colId) => {
     if (!SORT_VALUE_GETTERS[colId]) return;
@@ -63,5 +68,5 @@ export default function useJobCardSort(cards) {
     });
   }, [cards, sortBy, sortDir]);
 
-  return { sortBy, sortDir, handleSort, sortedCards };
+  return { sortBy, sortDir, handleSort, resetSort, sortedCards };
 }

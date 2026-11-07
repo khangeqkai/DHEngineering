@@ -16,6 +16,11 @@ export default function JobCardListFilters({
   filter,
   onFilterChange,
   actionRequiredCount,
+  overdueCount,
+  companyLabel,
+  onClearCompany,
+  canClearFilters,
+  onClearFilters,
   columnsMenu
 }) {
   return (
@@ -78,12 +83,32 @@ export default function JobCardListFilters({
           </div>
           <span className="filter-divider" aria-hidden="true" />
           <button
-            className={`btn btn-sm ${filter === 'OVERDUE' ? 'btn-primary' : 'btn-secondary'} filter-btn-overdue`}
+            className={`btn btn-sm ${filter === 'OVERDUE' ? 'btn-primary' : 'btn-secondary'} filter-btn-overdue filter-btn-counted`}
             onClick={() => onFilterChange('OVERDUE')}
           >
             Overdue
+            <span className="filter-count">{overdueCount}</span>
           </button>
         </div>
+      )}
+      {companyLabel && (
+        <span className="filter-company-chip">
+          Customer: {companyLabel}
+          <button
+            type="button"
+            className="filter-company-chip-x"
+            onClick={onClearCompany}
+            aria-label="Remove customer filter"
+            title="Remove customer filter"
+          >
+            <X size={14} />
+          </button>
+        </span>
+      )}
+      {canClearFilters && (
+        <button type="button" className="btn btn-sm btn-secondary" onClick={onClearFilters}>
+          <X size={14} /> Clear filters
+        </button>
       )}
       <div className="filters-right">
         {columnsMenu}

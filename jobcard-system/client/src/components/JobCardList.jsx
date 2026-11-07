@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Plus } from 'lucide-react';
 import { api } from '../services/api';
@@ -20,6 +20,7 @@ import { useDismissableMenu } from '../hooks/useDismissableMenu';
 import { describeWorkWarning } from '../utils/attachmentWarnings';
 import { changeJobStatus } from './jobcard/changeJobStatus';
 import { prefetchJobCardReferenceData } from './jobcard/useJobCardReferenceData';
+import { recallJobListView, rememberJobListView } from '../utils/sessionMemory';
 import useJobCardSort from '../hooks/useJobCardSort';
 import useJobCardColumnOrder from '../hooks/useJobCardColumnOrder';
 import useJobCardColumnVisibility from '../hooks/useJobCardColumnVisibility';
@@ -45,15 +46,28 @@ export default function JobCardList() {
   const canInvoice = can(user, 'invoiceJob');
   const canSeePricing = can(user, 'pricing');
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
+  // Where the list starts: whatever the address asks for, and when the address is
+  // bare (the sidebar link, or coming back from another page) the view this person
+  // left it in. Read once per opening. Search words come only from the address.
+  const startView = useRef(null);
+  if (startView.current === null) {
+    const asked = ['filter', 'mine', 'assignee', 'company'].some(k => searchParams.has(k));
+    startView.current = asked ? {} : (recallJobListView() || {});
+  }
+  const start = startView.current;
   const [filter, setFilter] = useState(() => {
-    const paramFilter = searchParams.get('filter');
+    const paramFilter = searchParams.get('filter') ?? start.filter;
     const valid = ACTIVE_FILTER_OPTIONS.some(o => o.value === paramFilter);
     return valid ? paramFilter : 'all';
   });
   const [search, setSearch] = useState(() => searchParams.get('q') || '');
-  const [myJobsOnly, setMyJobsOnly] = useState(() => searchParams.get('mine') === '1');
-  const [assigneeFilter, setAssigneeFilter] = useState(() => searchParams.get('assignee') || 'all');
+  const [myJobsOnly, setMyJobsOnly] = useState(() => (searchParams.has('mine') ? searchParams.get('mine') === '1' : !!start.myJobsOnly));
+  const [assigneeFilter, setAssigneeFilter] = useState(() => searchParams.get('assignee') || start.assigneeFilter || 'all');
+  // One customer's jobs, asked for by address (from a customer found in Search). Not
+  // remembered: it is a way in from Search, not a setting of the list.
+  const [companyFilter, setCompanyFilter] = useState(() => (canManage ? searchParams.get('company') : null) || null);
   const [employees, setEmployees] = useState([]);
   const [showArchived, setShowArchived] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -282,9 +296,10 @@ export default function JobCardList() {
         (canManage && card.companyName?.toLowerCase().includes(lowerSearch)) ||
         card.assignees?.some(a => a.userName?.toLowerCase().includes(lowerSearch)) ||
         card.description?.toLowerCase().includes(lowerSearch);
-      return matchesMine && matchesSearch;
+      const matchesCompany = !companyFilter || String(card.companyId) === companyFilter;
+      return matchesMine && matchesSearch && matchesCompany;
     });
-  }, [jobcards, myJobsOnly, showArchived, search, canManage, user?.id]);
+  }, [jobcards, myJobsOnly, showArchived, search, canManage, user?.id, companyFilter]);
 
   // The status filter buttons aren't shown in the archived view (see
   // JobCardListFilters), but the chosen filter value stays in state — without this, a
@@ -303,7 +318,14 @@ export default function JobCardList() {
     [visibleCards]
   );
 
-  const { sortBy, sortDir, handleSort, sortedCards } = useJobCardSort(filteredCards);
+  // Same idea for Overdue: counted with the very rule that paints rows red and that
+  // the Overdue button filters by (matchesStatusFilter), over the same set of jobs.
+  const overdueCount = useMemo(
+    () => visibleCards.filter(c => matchesStatusFilter(c, 'OVERDUE', today)).length,
+    [visibleCards, today]
+  );
+
+  const { sortBy, sortDir, handleSort, resetSort, sortedCards } = useJobCardSort(filteredCards, start);
 
   const displayedCards = useMemo(() => {
     if (!activeTimerJobcardId) return sortedCards;
@@ -331,13 +353,19 @@ export default function JobCardList() {
     } else {
       params.delete('q');
     }
+    if (companyFilter) {
+      params.set('company', companyFilter);
+    } else {
+      params.delete('company');
+    }
     if (myJobsOnly) {
       params.set('mine', '1');
     } else {
       params.delete('mine');
     }
     setSearchParams(params, { replace: true });
-  }, [filter, search, showArchived, assigneeFilter, myJobsOnly, sortBy, sortDir, setSearchParams]);
+    rememberJobListView({ filter, assigneeFilter, myJobsOnly, sortBy, sortDir });
+  }, [filter, search, showArchived, assigneeFilter, myJobsOnly, companyFilter, sortBy, sortDir, setSearchParams]);
 
   const totalPages = Math.max(1, Math.ceil(displayedCards.length / PAGE_SIZE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -391,6 +419,10 @@ export default function JobCardList() {
     if (filter !== 'all') {
       activeFilterWords.push(FILTER_LABELS[filter] || filter);
     }
+    if (companyFilter) {
+      const owner = jobcards.find(c => String(c.companyId) === companyFilter);
+      activeFilterWords.push(`Customer ${owner?.companyName || 'chosen in Search'}`);
+    }
     if (canManage && assigneeFilter !== 'all') {
       const emp = employees.find(e => e.id === assigneeFilter);
       activeFilterWords.push(assigneeFilter === 'UNASSIGNED' ? 'Unassigned' : `Assigned to ${emp ? displayName(emp) : 'one person'}`);
@@ -402,8 +434,21 @@ export default function JobCardList() {
     setFilter('all');
     setMyJobsOnly(false);
     setAssigneeFilter('all');
+    setCompanyFilter(null);
     setSearch('');
+    resetSort();
   };
+
+  // Anything but the plain list is in force (search words have their own clear
+  // button, so they don't light this one).
+  // A sort alone is not a filter, so it does not light it either.
+  const canClearFilters = !showArchived
+    ? (filter !== 'all' || myJobsOnly || assigneeFilter !== 'all' || !!companyFilter)
+    : !!companyFilter;
+
+  const companyLabel = companyFilter
+    ? (jobcards.find(c => String(c.companyId) === companyFilter)?.companyName || 'Customer filter')
+    : null;
 
   const columns = getJobCardColumns({
     user,
@@ -494,6 +539,11 @@ export default function JobCardList() {
         filter={filter}
         onFilterChange={setFilter}
         actionRequiredCount={showArchived ? 0 : actionRequiredCount}
+        overdueCount={showArchived ? 0 : overdueCount}
+        companyLabel={companyLabel}
+        onClearCompany={() => setCompanyFilter(null)}
+        canClearFilters={canClearFilters}
+        onClearFilters={clearAllFilters}
         columnsMenu={
           <JobCardColumnsMenu
             columns={toggleableColumns}
@@ -542,6 +592,8 @@ export default function JobCardList() {
                     : 'Try adjusting your search or filters.'}
                   actionLabel={activeFilterWords.length ? 'Clear all filters' : undefined}
                   onAction={activeFilterWords.length ? clearAllFilters : undefined}
+                  secondaryActionLabel={search.trim() ? `Search everything for "${search.trim()}"` : undefined}
+                  onSecondaryAction={search.trim() ? () => navigate('/search', { state: { searchWords: search.trim() } }) : undefined}
                 />
               )
             ) : (

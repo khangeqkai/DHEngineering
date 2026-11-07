@@ -631,6 +631,7 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onCreated, onTime
       <BottomSheet
         isOpen
         onClose={handleRequestClose}
+        focusFirstField={false}
         // No Save button any more, so this now means "something hasn't reached the
         // job" — a failed write, an empty required box, a row mid-create/delete, or a
         // figure still sitting out the pricing screen's countdown. Amber and green are
@@ -866,6 +867,7 @@ function JobCardWindow({ onClose, jobCardId = null, onSuccess, onCreated, onTime
                 <button type="submit" className="btn btn-primary" disabled={saving} title="Create job card (Ctrl+Enter)">
                   {saving ? 'Creating…' : 'Create job card'}
                 </button>
+                <span className="create-shortcut-hint">Ctrl+Enter to create</span>
               </BottomSheet.Footer>
             ) : canManage && (
               <span className="sr-only" role="status" aria-live="polite">

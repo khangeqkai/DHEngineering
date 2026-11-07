@@ -6,6 +6,7 @@ const { authenticate, requireManagement, isManagement } = require('../middleware
 const { validateStartTimer, validateConfirmFinish, validateManualTimeEntry, validateTimeEntryEdit } = require('../middleware/validation');
 const { db, timeEntryQueries, jobcardQueries, userQueries, recordHistory, actorName } = require('../db/database');
 const { displayName } = require('../shared/names');
+const { stopNoteMessage } = require('../shared/stopNote');
 const { blankEqual, diffFields } = require('../utils/historyChanges');
 const { discardIfAccidentalTap } = require('../utils/startTimerUndo');
 const {
@@ -672,6 +673,17 @@ router.put('/:id/time-entries/:entryId', authenticate, ...validateTimeEntryEdit,
       ? (data.machineNumber || null)
       : existing.machine_number;
     const qty = data.qty !== undefined ? wholeQty(data.qty) : existing.qty;
+    // The stop form's own save states what was done; a blank, one-key or letterless
+    // answer is refused here too, so the form's check can't be bypassed — judged on the
+    // note the run would keep, so leaving the note out of the save doesn't skip it. (A
+    // hand edit by the office, and a resume — which clears the finish and sends no note —
+    // never go through this.)
+    if (data.detailsConfirmed === true && endTime !== null) {
+      const noteMessage = stopNoteMessage(data.description !== undefined ? data.description : existing.description);
+      if (noteMessage) {
+        return res.status(400).json({ error: noteMessage, fields: [{ field: 'description', message: noteMessage }] });
+      }
+    }
     const description = data.description !== undefined
       ? (data.description || null)
       : existing.description;

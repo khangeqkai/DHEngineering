@@ -13,6 +13,7 @@ import { jobFieldMessage } from './fieldRules.mjs';
 import FieldError from '../common/FieldError';
 import StatusPopover from '../common/StatusPopover';
 import { isJobClosed } from '../../utils/jobLock';
+import { isCriticalLevel, qualityLevelLabel } from '../../../../server/src/shared/qualityLevels';
 
 const PRIORITY_VALUES = PRIORITY_OPTIONS.map(p => p.value);
 
@@ -342,6 +343,14 @@ export default function JobIdentityStrip({
   return (
     <div className="jc-identity-strip" role="group" aria-label="Job card identity">
       <span id="modal-title" className="jc-strip-jobnumber">{titleText}</span>
+
+      {/* Square-cornered and outlined, so it reads as a label on the job and not as one
+          of the round status / priority pills beside it. */}
+      {isCriticalLevel(formData.qualityLevel) && (
+        <span className="jc-strip-critical" title="This job has the Critical quality level">
+          {qualityLevelLabel(formData.qualityLevel)}
+        </span>
+      )}
 
       <div className="jc-strip-divider" aria-hidden="true" />
 

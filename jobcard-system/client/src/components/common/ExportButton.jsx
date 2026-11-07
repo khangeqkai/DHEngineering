@@ -50,6 +50,26 @@ export default function ExportButton({ onExportView, onExportAll, viewLabel = 'S
     }
   }, []);
 
+  // Only one choice: a menu with a single item is a wasted click, so it is one button
+  // labelled "Save to Excel", with the hover title saying what it saves.
+  const onlyChoice = onExportView && !onExportAll ? { fn: onExportView, title: 'Saves what is showing — a search narrows the file' }
+    : onExportAll && !onExportView ? { fn: onExportAll, title: 'Saves everything' }
+    : null;
+  if (onlyChoice) {
+    return (
+      <button
+        type="button"
+        className="btn btn-secondary"
+        onClick={() => handleExport(onlyChoice.fn)}
+        disabled={loading}
+        title={onlyChoice.title}
+      >
+        {loading ? <Spinner size={16} /> : <Download size={16} />}
+        {loading ? 'Saving…' : 'Save to Excel'}
+      </button>
+    );
+  }
+
   return (
     <div className="export-btn-wrapper" ref={ref}>
       <button

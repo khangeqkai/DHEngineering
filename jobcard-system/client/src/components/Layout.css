@@ -27,3 +27,19 @@
   margin-left: var(--space-2);
   margin-right: var(--space-2);
 }
+
+/* The name of a sidebar icon, shown beside it while the sidebar is collapsed. */
+.nav-tooltip {
+  position: fixed;
+  z-index: var(--layer-tooltip);
+  transform: translateY(-50%);
+  padding: var(--space-1-5) var(--space-3);
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  pointer-events: none;
+}

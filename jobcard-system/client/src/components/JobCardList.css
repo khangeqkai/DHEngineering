@@ -24,6 +24,37 @@
   flex-shrink: 0;
 }
 
+/* The removable "Customer: …" chip shown while the list is narrowed to one customer. */
+.filter-company-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-inline);
+  min-height: 38px;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+}
+
+.filter-company-chip-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-0-5);
+  border: none;
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.filter-company-chip-x:hover {
+  color: var(--text-primary);
+  background: var(--surface-inset);
+}
+
 /* Columns show/hide menu */
 .columns-menu {
   position: relative;
@@ -638,7 +669,8 @@
 
 /* Action Required: how many jobs are waiting on someone, always on show, and a dot
    that drifts with the status's own colours while any are waiting (App.css). */
-.filter-btn-alert {
+.filter-btn-alert,
+.filter-btn-counted {
   display: inline-flex;
   align-items: center;
   gap: var(--gap-inline);

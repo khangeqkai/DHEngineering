@@ -807,6 +807,50 @@ function buildPeriodTrends(inRangeJobs, completedInRangeJobs, inRangeTimeEntries
     });
 }
 
+// ── The same stretch of days, last month ──
+// "This month so far" is only fairly compared with the SAME number of days last month
+// (on the 6th: the 1st to the 6th), never with the whole of it. Only the This Month
+// view has such a stretch, so every other view answers null. The two headline figures
+// are worked out by the very same rules as the current ones — processJobMetrics for
+// the on-time count and measureTimeEntry for hours — over last month's days. A month
+// that is shorter than the day we are on (the 31st, with a 30-day month before)
+// stops at its own last day, and `days` says how many days that really was.
+function buildSameSpanLastMonth(preset, startDate, endDate, fmt, todayStr) {
+  if (preset !== 'this_month' || !startDate || !endDate) return null;
+  const dayOfMonth = Number(endDate.slice(8, 10));
+  let prevYear = Number(startDate.slice(0, 4));
+  let prevMonth = Number(startDate.slice(5, 7)) - 1;
+  if (prevMonth === 0) { prevMonth = 12; prevYear -= 1; }
+  const days = Math.min(dayOfMonth, new Date(prevYear, prevMonth, 0).getDate());
+  const prevStart = `${prevYear}-${pad2(prevMonth)}-01`;
+  const prevEnd = `${prevYear}-${pad2(prevMonth)}-${pad2(days)}`;
+
+  // The same 2-day margin the route puts round a range, so no row whose office-clock
+  // day is inside the span can be left out by the UTC comparison in SQL.
+  const buffered = (ymd, shift) => { const d = new Date(ymd); d.setDate(d.getDate() + shift); return d.toISOString(); };
+  const bufferedStartIso = buffered(prevStart, -2);
+  const bufferedEndIso = buffered(prevEnd, 2);
+
+  const jobs = fetchStatsJobs(prevStart, prevEnd, bufferedStartIso, bufferedEndIso);
+  const { onTimeJobsCount, lateJobsCount, onTimeRate } = processJobMetrics(jobs, fmt, todayStr, prevStart, prevEnd);
+
+  let hours = 0;
+  for (const te of fetchInRangeTimeEntries(bufferedStartIso, bufferedEndIso, prevStart, prevEnd, fmt)) {
+    const measured = measureTimeEntry(te);
+    if (measured) hours += measured.hours;
+  }
+
+  return {
+    days,
+    startDate: prevStart,
+    endDate: prevEnd,
+    onTimeRate,
+    onTimeJobsCount,
+    lateJobsCount,
+    totalWorkshopHours: roundTo(hours, 2)
+  };
+}
+
 // ── Customer Rankings (Includes any customer with jobs created, completed, or worked in period) ──
 // Each invoiced job's live grand total, keyed by job id. No invoice-time freeze
 // (docs/notes/time-and-costing.md, "Per-job rule ownership") — the stored grand_total
@@ -927,5 +971,6 @@ module.exports = {
   buildWorkerLeaderboard,
   formatMachineUtilization,
   buildPeriodTrends,
+  buildSameSpanLastMonth,
   buildCustomerRankings
 };
