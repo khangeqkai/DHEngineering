@@ -289,6 +289,15 @@ export default function SearchPage() {
     return undefined;
   }, [scope]);
 
+  // People results mix customers, their people and suppliers, each numbered on
+  // its own (and a customer with nobody recorded stands in under its company
+  // number), so a bare id can repeat within one list — the type and company
+  // make each row's key its own.
+  const getResultRowKey = useCallback((row, rowIndex) => {
+    if (scope !== 'people') return row.id || rowIndex;
+    return row.type === 'contact' ? `contact:${row.companyId}:${row.id}` : `supplier:${row.id}`;
+  }, [scope]);
+
   useEffect(() => { inputRef.current?.focus(); }, []);
   // Fill the picker lists now so the first job window opens with them already in place.
   useEffect(() => { prefetchJobCardReferenceData(); }, []);
@@ -594,6 +603,7 @@ export default function SearchPage() {
                 loading={false}
                 onRowClick={handleRowClick}
                 getRowAriaLabel={getResultRowAriaLabel}
+                getRowKey={getResultRowKey}
                 emptyState={{ icon: 'search', title: 'No results', description: q ? `No results for "${q.trim()}". Try fewer words${scope === 'jobs' ? ', or tick Include archived' : ''}.` : 'Adjust your filters to find results' }}
               />
             </div>

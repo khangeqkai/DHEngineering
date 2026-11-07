@@ -49,6 +49,9 @@ export default function DataTable({
   // button that opens the row — e.g. "Open job 1234". Optional; without it the
   // button falls back to a generic label.
   getRowAriaLabel,
+  // (row, index) => a key unique within the list. Only needed when rows from
+  // different tables share one list, so their own ids can collide.
+  getRowKey,
 }) {
   const { searchTerm, setSearchTerm, filteredData } = useTableFilter(
     data,
@@ -158,7 +161,7 @@ export default function DataTable({
               ) : (
                 sortedData.map((row, rowIndex) => (
                   <tr
-                    key={row.id || rowIndex}
+                    key={getRowKey ? getRowKey(row, rowIndex) : (row.id || rowIndex)}
                     className={`${onRowClick ? 'clickable' : ''} ${typeof rowClassName === 'function' ? rowClassName(row) : ''}`}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                   >
