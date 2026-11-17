@@ -163,4 +163,28 @@ function filesWindowTests() {
       assert.equal(after.length, 2);
     });
   }
+
+  test('a CAD drawing is kept and handed back; a wrong or disguised type is refused', async () => {
+    const dxf = Buffer.from('0\nSECTION\n2\nENTITIES\n0\nENDSEC\n0\nEOF\n').toString('base64');
+    const up = ok(await call('POST', `${filesUrl('job-files')}/upload`, { filename: 'Plate.dxf', fileData: dxf }), 201, 'upload a DXF');
+    const list = ok(await call('GET', filesUrl('job-files')), 200, 'list with the DXF');
+    assert.equal(list.find((f) => f.name === up.name).displayName, 'Plate.dxf');
+    const back = ok(await call('GET', `${filesUrl('job-files')}/${encodeURIComponent(up.name)}`), 200, 'read the DXF back');
+    assert.equal(back.data, dxf);
+
+    // A Word file whose contents aren't a Word file is refused; any other type still is too.
+    assert.equal((await call('POST', `${filesUrl('job-files')}/upload`, { filename: 'Notes.docx', fileData: dxf })).status, 400);
+    assert.equal((await call('POST', `${filesUrl('job-files')}/upload`, { filename: 'run.exe', fileData: dxf })).status, 400);
+  });
+
+  test('a file up to 100 MB is kept; a bigger one is refused', async () => {
+    // 60 MB is past the 50 MB limit every other request body has, so this only
+    // passes if the upload route really was given room for a 100 MB file.
+    const big = Buffer.alloc(60 * 1024 * 1024, 'a').toString('base64');
+    const up = ok(await call('POST', `${filesUrl('job-files')}/upload`, { filename: 'Big model.step', fileData: big }), 201, 'upload a 60 MB file');
+    assert.equal(up.size, 60 * 1024 * 1024);
+    const tooBig = Buffer.alloc(101 * 1024 * 1024, 'a').toString('base64');
+    const refused = await call('POST', `${filesUrl('job-files')}/upload`, { filename: 'Huge model.step', fileData: tooBig });
+    assert.ok(refused.status === 400 || refused.status === 413, `expected a refusal, got ${refused.status}`);
+  });
 }

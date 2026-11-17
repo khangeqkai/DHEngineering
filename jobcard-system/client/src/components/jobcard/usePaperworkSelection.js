@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { ORDER, MAX_PACKET_FILES, keyOf } from './paperworkHubHelpers';
+import { isPrintableFileName } from '../../../../server/src/shared/jobFiles';
 
 // Which files (plus the pinned job card) are ticked for the combined printout, and
 // the per-section / per-part / whole-job pick-clear helpers the paperwork hub's
@@ -9,7 +10,14 @@ import { ORDER, MAX_PACKET_FILES, keyOf } from './paperworkHubHelpers';
 // means (print/save) and how it's drawn. The ticks live as long as the job window:
 // closing the Files window (Escape or the X) keeps them, so reopening shows the same
 // ticks. Nothing resets them; they go when the job card itself closes.
-export function usePaperworkSelection(filesByCategory) {
+// Only a file the app can draw (a PDF or a picture) can be ticked for the printout;
+// a CAD drawing or office document is listed but never part of the selection.
+export function usePaperworkSelection(allFilesByCategory) {
+  const filesByCategory = useMemo(() => {
+    const printable = {};
+    for (const cat of ORDER) printable[cat] = (allFilesByCategory[cat] || []).filter(f => isPrintableFileName(f.name));
+    return printable;
+  }, [allFilesByCategory]);
   const [selected, setSelected] = useState(() => new Set());
   const [cardTicked, setCardTicked] = useState(true);
   const seenRef = useRef(new Set());
@@ -79,8 +87,9 @@ export function usePaperworkSelection(filesByCategory) {
     return items;
   }, [filesByCategory, selected]);
 
-  const totalFileCount = allFileKeys().length;
-  const totalSelectable = totalFileCount + 1; // + the job card
+  // Every file the job holds (the Files button's count), printable or not.
+  const totalFileCount = ORDER.reduce((n, cat) => n + (allFilesByCategory[cat] || []).length, 0);
+  const totalSelectable = allFileKeys().length + 1; // + the job card
   const tickedFileCount = selectedItems().length;
   const tickedCount = tickedFileCount + (cardTicked ? 1 : 0);
   const overFileLimit = tickedFileCount > MAX_PACKET_FILES;

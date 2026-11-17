@@ -34,15 +34,30 @@ const MIME_TYPES = {
   '.tiff': 'image/tiff',
   '.tif': 'image/tiff',
   '.bmp': 'image/bmp',
-  '.gif': 'image/gif'
+  '.gif': 'image/gif',
+  // Stored-only types: never drawn by the app, only handed back as a download.
+  '.dxf': 'application/dxf',
+  '.dwg': 'application/acad',
+  '.step': 'application/step',
+  '.stp': 'application/step',
+  '.iges': 'model/iges',
+  '.igs': 'model/iges',
+  '.stl': 'model/stl',
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xls': 'application/vnd.ms-excel',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.csv': 'text/csv',
+  '.txt': 'text/plain'
 };
 
 const CATEGORIES = Object.keys(CATEGORY_FOLDER);
 
-// Cap binary upload at 30 MB so a single phone-photo upload can't tie up the
-// request thread; the global express.json() ceiling of 50 MB is intentionally
-// looser to accommodate other JSON payloads. Base64 encoding inflates bytes by
-// ~4/3, so the raw-string ceiling is ceil(30 MB * 4 / 3).
+// Cap an upload at MAX_UPLOAD_BYTES so one file can't tie up the request thread.
+// Base64 encoding inflates bytes by ~4/3, so the raw-string ceiling is
+// ceil(MAX_UPLOAD_BYTES * 4 / 3); server/index.js gives the upload route a body
+// limit sized to match (every other route keeps the smaller global one).
+const MAX_UPLOAD_MB = Math.round(MAX_UPLOAD_BYTES / (1024 * 1024));
 const MAX_FILE_DATA_CHARS = Math.ceil((MAX_UPLOAD_BYTES * 4) / 3);
 
 /**
@@ -361,7 +376,7 @@ const validateUploadBody = [
     .bail()
     .custom((value) => {
       if (value.length > MAX_FILE_DATA_CHARS) {
-        throw new Error('File too large (max 30 MB)');
+        throw new Error(`File too large (max ${MAX_UPLOAD_MB} MB)`);
       }
       return true;
     }),

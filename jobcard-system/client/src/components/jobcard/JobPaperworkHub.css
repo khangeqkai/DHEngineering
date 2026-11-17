@@ -362,6 +362,10 @@
   padding: 0;
 }
 
+/* A file that can't go in the printout: same columns, nothing to click or tick. */
+.hub-row-toggle--static { cursor: default; }
+.hub-check-gap { width: 21px; flex-shrink: 0; }
+
 /* Included items look crisp; excluded ones quietly recede. */
 .hub-file-row.off .hub-file-name,
 .hub-file-row.off .hub-thumb { opacity: 0.42; }

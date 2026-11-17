@@ -176,6 +176,11 @@ export default function CostingTab({
     );
   };
 
+  // A figure that isn't zero is drawn bold blue so the lines that carry something stand
+  // out from the empty ones. An empty or half-typed box counts as zero. Four columns
+  // are deliberately left plain: × base, Rate / hr, Cost or hours, Markup or rate.
+  const nonZero = (value) => (Number(value) ? ' is-nonzero' : '');
+
   // One figure box on a cost row: an input with a $, h or % mark, plus its own error.
   // `mark` is { prefix: '$' } or { suffix: 'h' | '%' }.
   const costBox = (name, mark) => {
@@ -220,7 +225,7 @@ export default function CostingTab({
       {costBox(first, firstMark)}
       <span className="ledger-op">{op}</span>
       {costBox(second, secondMark)}
-      <span className={`ledger-amount${total === 0 ? ' ledger-amount--zero' : ''}`}>{formatMoney(total)}</span>
+      <span className={`ledger-amount${total === 0 ? ' ledger-amount--zero' : ''}${nonZero(total)}`}>{formatMoney(total)}</span>
       <span className="ledger-undo">{[revertControl(first), revertControl(second)]}</span>
     </div>
   );
@@ -297,7 +302,7 @@ export default function CostingTab({
           <input
             type="text"
             inputMode="decimal"
-            className={`ledger-input${t.overridden ? ' ledger-input--edited' : ''}`}
+            className={`ledger-input${t.overridden ? ' ledger-input--edited' : ''}${nonZero(t.hoursValue)}`}
             name={t.hoursName}
             value={t.hoursValue}
             onChange={handleCostingChange}
@@ -332,7 +337,7 @@ export default function CostingTab({
           <span className="ledger-mult-fixed">×{mult(t.multiplier)}</span>
         )}
         <span className="ledger-rate">{formatMoney(derivedRate)}</span>
-        <span className={`ledger-amount${t.total === 0 ? ' ledger-amount--zero' : ''}`}>{formatMoney(t.total)}</span>
+        <span className={`ledger-amount${t.total === 0 ? ' ledger-amount--zero' : ''}${nonZero(t.total)}`}>{formatMoney(t.total)}</span>
         <span className="ledger-undo">
           {t.overridden && undoItem(
             'hours',
@@ -431,6 +436,7 @@ export default function CostingTab({
                 <input
                   type="text"
                   inputMode="decimal"
+                  className={nonZero(costingForm.labourRate).trim() || undefined}
                   name="labourRate"
                   value={costingForm.labourRate}
                   onChange={handleCostingChange}
@@ -449,7 +455,7 @@ export default function CostingTab({
             </div>
             <span className="costing-section-subtotal">
               <span className="costing-subtotal-label">Subtotal</span>
-              <span className="costing-subtotal-value">{formatMoney(labourSubtotal)}</span>
+              <span className={`costing-subtotal-value${nonZero(labourSubtotal)}`}>{formatMoney(labourSubtotal)}</span>
             </span>
           </div>
 
@@ -489,7 +495,7 @@ export default function CostingTab({
             <span className="costing-section-title">Other costs</span>
             <span className="costing-section-subtotal">
               <span className="costing-subtotal-label">Subtotal</span>
-              <span className="costing-subtotal-value">{formatMoney(otherSubtotal)}</span>
+              <span className={`costing-subtotal-value${nonZero(otherSubtotal)}`}>{formatMoney(otherSubtotal)}</span>
             </span>
           </div>
 
@@ -527,10 +533,11 @@ export default function CostingTab({
         {/* The one grand total on the sheet, in invoice order: labour, other costs, total */}
         <div className="costing-total">
           <span className="costing-total-parts">
-            Labour {formatMoney(labourSubtotal)} · Other costs {formatMoney(otherSubtotal)}
+            Labour <span className={nonZero(labourSubtotal).trim() || undefined}>{formatMoney(labourSubtotal)}</span>
+            {' · '}Other costs <span className={nonZero(otherSubtotal).trim() || undefined}>{formatMoney(otherSubtotal)}</span>
           </span>
           <span className="costing-total-label">Grand total</span>
-          <span className="costing-total-value">{formatMoney(totals.grandTotal)}</span>
+          <span className={`costing-total-value${nonZero(totals.grandTotal)}`}>{formatMoney(totals.grandTotal)}</span>
         </div>
         </fieldset>
       </div>

@@ -37,6 +37,7 @@ const searchRoutes = require('./src/routes/search');
 const statisticsRoutes = require('./src/routes/statistics');
 const { initializeDatabase } = require('./src/db/init');
 const { maintenanceGuard } = require('./src/middleware/maintenance');
+const { MAX_UPLOAD_BYTES } = require('./src/shared/jobFiles');
 const { authenticate } = require('./src/middleware/auth');
 const { closedJobGuard } = require('./src/middleware/closedJob');
 const { verifyPdfEngine, getPdfEngineStatus } = require('./src/utils/pdfEngine');
@@ -58,7 +59,12 @@ app.set('trust proxy', 'loopback');
 // boxes, so it gets its own small body limit, parsed first — a huge body is
 // refused before it is read instead of inheriting the photo-sized limit below.
 app.use('/api/auth/login', express.json({ limit: '10kb' }));
-app.use(express.json({ limit: '50mb' })); // Large limit for photos
+// A job-file upload carries the whole file as base64 text, which is a third
+// bigger than the file itself, so that one route gets room for the largest file
+// allowed (MAX_UPLOAD_BYTES) plus the rest of the body. It is parsed here first;
+// everything else keeps the smaller limit below.
+app.use(/^\/api\/jobcards\/[^/]+\/files\/[^/]+\/upload\/?$/, express.json({ limit: Math.ceil((MAX_UPLOAD_BYTES * 4) / 3) + 64 * 1024 }));
+app.use(express.json({ limit: '50mb' })); // Roomy limit for every other body
 app.use(requestLogger); // Request logging
 
 // Health check endpoint

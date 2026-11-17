@@ -1,5 +1,5 @@
 import { Check, Minus } from 'lucide-react';
-import { MAX_PRINT_FILES } from '../../../../server/src/shared/jobFiles';
+import { MAX_PRINT_FILES, isPrintableFileName } from '../../../../server/src/shared/jobFiles';
 
 // Shared constants and small pure helpers for the paperwork hub, split out to keep
 // JobPaperworkHub.jsx focused on the panel itself.
@@ -20,7 +20,9 @@ export function fileKindLabel(f) {
   const dot = f.name.lastIndexOf('.');
   const ext = dot > 0 ? f.name.slice(dot + 1).toUpperCase() : '';
   if (ext === 'PDF') return 'PDF document';
-  return ext ? `${ext} file` : 'File';
+  if (!ext) return 'File';
+  // Says up front why this row has no tick and no print button.
+  return isPrintableFileName(f.name) ? `${ext} file` : `${ext} file · not in the printout`;
 }
 
 // The one selection control used everywhere (rows, groups, the job card and the

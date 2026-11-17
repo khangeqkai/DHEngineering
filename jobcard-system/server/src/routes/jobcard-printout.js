@@ -15,15 +15,16 @@ const { buildPacketPdf } = require('../utils/pdfPacket');
 const { renderHtmlToPdf } = require('../utils/htmlToPdf');
 const { jobcardQueries, recordHistory, actorName } = require('../db/database');
 const { findOr404 } = require('../utils/findOr404');
-const { ALLOWED_FILE_EXTENSIONS, MAX_PRINT_FILES, CATEGORY_FOLDER } = require('../shared/jobFiles');
+const { PRINTABLE_FILE_EXTENSIONS, MAX_PRINT_FILES, CATEGORY_FOLDER } = require('../shared/jobFiles');
 
-// Built from the shared allowlist so a printable extension can never drift from
-// what the file folders themselves accept.
-const VALID_PACKET_EXT = new Set(ALLOWED_FILE_EXTENSIONS);
+// Built from the shared list of printable types (PDFs and pictures), so it can
+// never drift from what the Files window offers to print. A stored-only file
+// (a CAD drawing, an office document) is kept by the job but can't be drawn.
+const VALID_PACKET_EXT = new Set(PRINTABLE_FILE_EXTENSIONS);
 const MAX_PACKET_BYTES = 40 * 1024 * 1024;
 // Ceiling on the total bytes of on-disk files we'll pull into memory at once while
-// building a packet. With 20 items at the 30 MB per-file upload cap that tops out
-// at 600 MB; we bail with 413 before reading past it so a big batch can't exhaust
+// building a packet. 20 items at the 100 MB per-file upload cap could reach 2 GB,
+// so we bail with 413 before reading past this so a big batch can't exhaust
 // the shared server's memory. (The much smaller MAX_PACKET_BYTES bounds the final
 // merged output; this bounds the raw input we read to build it.)
 const MAX_PACKET_INPUT_BYTES = 600 * 1024 * 1024;

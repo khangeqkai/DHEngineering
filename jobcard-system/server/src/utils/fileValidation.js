@@ -57,8 +57,19 @@ function matchesSignature(buffer, ext) {
         (b[0] === 0x49 && b[1] === 0x49 && b[2] === 0x2a && b[3] === 0x00) || // II*\0 little-endian
         (b[0] === 0x4d && b[1] === 0x4d && b[2] === 0x00 && b[3] === 0x2a)    // MM\0* big-endian
       );
+    case '.docx':
+    case '.xlsx':
+      return b.length >= 4 && b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04; // PK\x03\x04 (zip container)
+    case '.doc':
+    case '.xls':
+      return b.length >= 4 && b[0] === 0xd0 && b[1] === 0xcf && b[2] === 0x11 && b[3] === 0xe0; // old Office container
+    case '.dwg':
+      return b.length >= 2 && b[0] === 0x41 && b[1] === 0x43; // "AC" + version digits
     default:
-      return true; // unknown extension: nothing to check against (validators gate this elsewhere)
+      // No fixed header to check: plain-text formats (.dxf, .step, .iges, .csv,
+      // .txt) and .stl, which is text or binary. The extension itself was already
+      // checked against the allowed list by the route's validator.
+      return true;
   }
 }
 

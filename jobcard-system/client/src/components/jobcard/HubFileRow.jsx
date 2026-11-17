@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { Eye, Printer, FileText, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { Eye, Download, Printer, FileText, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { PickCircle } from './paperworkHubHelpers';
 import Spinner from '../common/Spinner';
 
 // One file line in the paperwork hub: tick to include in the printout, thumbnail,
 // name + kind, an optional "For:" picker (drawings / customer property only) that
 // ties the file to a part, and the per-row View / Print / Delete buttons.
+// A file the app can't draw (`printable` false — a CAD drawing, an office document)
+// has no tick and no Print button, and its View button saves a copy to open instead.
 export default function HubFileRow({
-  nameText, subText, isImage, thumb, checked, onToggle,
+  nameText, subText, isImage, printable = true, thumb, checked, onToggle,
   viewing, onView, onPrint, printDisabled,
   showOwnerPicker, parts, currentItemId, assigning, onAssign, canMove,
   canDelete, deleting, onDelete
@@ -17,23 +19,35 @@ export default function HubFileRow({
   // being removed stays in front of the person while they answer.
   const [confirming, setConfirming] = useState(false);
   return (
-    <li className={`hub-file-row${checked ? '' : ' off'}`}>
-      <button
-        type="button"
-        className="hub-row-toggle"
-        onClick={onToggle}
-        aria-pressed={checked}
-        title={checked ? 'Click to leave out of the printout' : 'Click to include in the printout'}
-      >
-        <PickCircle state={checked} />
-        <span className="hub-thumb">
-          {isImage && thumb ? <img src={thumb} alt="" /> : <FileIcon size={18} />}
-        </span>
-        <span className="hub-namecell">
-          <span className="hub-file-name">{nameText}</span>
-          <span className="hub-file-sub">{subText}</span>
-        </span>
-      </button>
+    <li className={`hub-file-row${checked || !printable ? '' : ' off'}`}>
+      {printable ? (
+        <button
+          type="button"
+          className="hub-row-toggle"
+          onClick={onToggle}
+          aria-pressed={checked}
+          title={checked ? 'Click to leave out of the printout' : 'Click to include in the printout'}
+        >
+          <PickCircle state={checked} />
+          <span className="hub-thumb">
+            {isImage && thumb ? <img src={thumb} alt="" /> : <FileIcon size={18} />}
+          </span>
+          <span className="hub-namecell">
+            <span className="hub-file-name">{nameText}</span>
+            <span className="hub-file-sub">{subText}</span>
+          </span>
+        </button>
+      ) : (
+        // Nothing to tick: the row keeps the same columns, with the circle's place left empty.
+        <div className="hub-row-toggle hub-row-toggle--static">
+          <span className="hub-check-gap" />
+          <span className="hub-thumb"><FileIcon size={18} /></span>
+          <span className="hub-namecell">
+            <span className="hub-file-name">{nameText}</span>
+            <span className="hub-file-sub">{subText}</span>
+          </span>
+        </div>
+      )}
 
       {showOwnerPicker && (
         <label className="hub-forpick" title="Which part is this file for?">
@@ -72,12 +86,21 @@ export default function HubFileRow({
           </span>
         ) : (
           <>
-            <button type="button" className="hub-icon-btn" onClick={onView} disabled={viewing} title="Preview">
-              {viewing ? <Spinner size={16} /> : <Eye size={16} />}
+            <button
+              type="button"
+              className="hub-icon-btn"
+              onClick={onView}
+              disabled={viewing}
+              title={printable ? 'Preview' : 'Save a copy to open it'}
+              aria-label={printable ? 'Preview' : 'Save a copy to open it'}
+            >
+              {viewing ? <Spinner size={16} /> : printable ? <Eye size={16} /> : <Download size={16} />}
             </button>
-            <button type="button" className="hub-icon-btn" onClick={onPrint} disabled={printDisabled} title="Print just this one">
-              <Printer size={16} />
-            </button>
+            {printable && (
+              <button type="button" className="hub-icon-btn" onClick={onPrint} disabled={printDisabled} title="Print just this one">
+                <Printer size={16} />
+              </button>
+            )}
             {canDelete && (
               <button
                 type="button"

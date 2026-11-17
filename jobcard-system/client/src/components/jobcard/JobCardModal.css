@@ -2984,6 +2984,14 @@
   color: var(--text-primary);
 }
 
+/* Any figure on the sheet that isn't zero — a box, a line amount, a subtotal, the grand
+   total — is bold blue, so the lines that carry something stand out from the empty
+   ones. A hand-typed box keeps its amber tint underneath. */
+.costing-sheet .is-nonzero {
+  font-weight: var(--font-bold);
+  color: var(--accent-text);
+}
+
 /* A quiet zero */
 .ledger-amount--zero {
   color: var(--text-tertiary);
@@ -3055,11 +3063,14 @@
   border-bottom: 1px dashed var(--border-input);
   border-radius: 0;
   background: transparent;
-  color: var(--text-secondary);
+  /* What was typed stands out like the figures beside it; the grey hint does not. */
+  font-weight: var(--font-bold);
+  color: var(--accent-text);
   font-size: var(--text-xs);
 }
 
 .ledger-note-input::placeholder {
+  font-weight: var(--font-regular);
   color: var(--text-tertiary);
 }
 

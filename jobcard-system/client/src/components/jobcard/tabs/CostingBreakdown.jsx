@@ -49,6 +49,9 @@ function machineKey(raw) {
 
 const DASH = <span className="cb-nil">—</span>;
 
+// The same rule as the pricing sheet below: a figure that isn't zero is bold blue.
+const nonZero = (value) => (Number(value) ? ' is-nonzero' : '');
+
 export default function CostingBreakdown({ lineItems = [], timeEntries = [], machines = [] }) {
   // The raw option lists (rather than the ready-made lookup) so the tables below can
   // be worked out once and reused: the ready-made lookup is a fresh function on every
@@ -171,7 +174,7 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [], mac
               </span>
               <span className="cb-item-sub">
                 {part.rows.length > 0 && (
-                  <span className="cb-item-total">{formatDecimalHours(part.totalMs)} h</span>
+                  <span className={`cb-item-total${nonZero(formatDecimalHours(part.totalMs))}`}>{formatDecimalHours(part.totalMs)} h</span>
                 )}
                 {part.jobType && <span className="cb-item-note">{part.jobType}</span>}
               </span>
@@ -210,7 +213,7 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [], mac
         <td className="cb-c-hours">
           {run ? (
             <>
-              {formatDecimalHours(run.ms)}
+              <span className={nonZero(formatDecimalHours(run.ms)).trim() || undefined}>{formatDecimalHours(run.ms)}</span>
               <span className="cb-hours-hm">{formatSpan(run.ms)}</span>
             </>
           ) : DASH}
@@ -269,7 +272,7 @@ export default function CostingBreakdown({ lineItems = [], timeEntries = [], mac
             <tr>
               <th scope="row" colSpan={5} className="cb-c-foot">Total logged</th>
               <td className="cb-c-hours">
-                {formatDecimalHours(jobTotalMs)}
+                <span className={nonZero(formatDecimalHours(jobTotalMs)).trim() || undefined}>{formatDecimalHours(jobTotalMs)}</span>
                 <span className="cb-hours-hm">{formatSpan(jobTotalMs)}</span>
               </td>
             </tr>

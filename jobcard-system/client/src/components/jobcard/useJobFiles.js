@@ -4,7 +4,9 @@ import { api } from '../../services/api';
 import { useStillMounted } from '../../hooks/useStillMounted';
 import { isJobClosedError } from '../../utils/jobLock';
 import { readFileAsBase64, base64ToBlob } from '../../utils/fileData';
-import { ALLOWED_FILE_EXTENSIONS, MAX_UPLOAD_BYTES, CATEGORY_FOLDER } from '../../../../server/src/shared/jobFiles';
+import { downloadBlob } from '../../utils/downloadBlob';
+import { infoToastIcon } from '../common/toastIcons';
+import { ALLOWED_FILE_EXTENSIONS, isPrintableFileName, MAX_UPLOAD_BYTES, CATEGORY_FOLDER } from '../../../../server/src/shared/jobFiles';
 
 export const CATEGORIES = Object.keys(CATEGORY_FOLDER);
 
@@ -35,7 +37,7 @@ function handledAsJobClosed(err, onJobClosed) {
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const MAX_UPLOAD_MB = Math.round(MAX_UPLOAD_BYTES / (1024 * 1024));
 
-// " · 2 skipped (a.pdf is over 30 MB; b.exe is the wrong type)" — every file that was
+// " · 2 skipped (a.pdf is over 100 MB; b.exe is the wrong type)" — every file that was
 // never tried, in one note, so a pick with several skips still ends in one message.
 function skippedNote(tooBig, badType) {
   const reasons = [
@@ -344,7 +346,14 @@ export function useJobFiles(jobcardId, { onJobClosed } = {}) {
         toast.error('Couldn\'t open this file. Try again in a moment.');
         return;
       }
-      if (fileData.mimeType?.startsWith('image/')) {
+      if (!isPrintableFileName(file.name)) {
+        // A CAD drawing or office document: the app can't draw it, so hand over a
+        // copy to open in its own program, under the name the person gave it.
+        const shownName = file.displayName || file.name;
+        downloadBlob(base64ToBlob(fileData.data, fileData.mimeType || 'application/octet-stream'), shownName);
+        // Not a "saved" message: a page can't tell whether the copy was kept (see downloadBlob).
+        toast(`${shownName} can't be shown here — save the copy and open it in its own program`, { icon: infoToastIcon, id: 'file-open-outside' });
+      } else if (fileData.mimeType?.startsWith('image/')) {
         setLightboxPhoto(`data:${fileData.mimeType || 'image/jpeg'};base64,${fileData.data}`);
       } else {
         const blob = base64ToBlob(fileData.data, fileData.mimeType || 'application/pdf');

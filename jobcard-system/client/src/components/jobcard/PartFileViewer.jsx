@@ -4,6 +4,9 @@ import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { base64ToBlob } from '../../utils/fileData';
+import { downloadBlob } from '../../utils/downloadBlob';
+import { infoToastIcon } from '../common/toastIcons';
+import { isPrintableFileName } from '../../../../server/src/shared/jobFiles';
 import { useModalLayer, isTopModal } from '../common/modalStack';
 import './JobPaperworkHub.css';
 
@@ -28,6 +31,14 @@ export default function PartFileViewer({ jobCardId, file, onClose }) {
         if (cancelled) return;
         if (!fileData?.data) {
           toast.error('Couldn\'t open this file. Try again in a moment.', { id: 'part-file-open-failed' });
+          onClose();
+          return;
+        }
+        if (!isPrintableFileName(file.storedName)) {
+          // A CAD drawing or office document can't be drawn here: hand over a copy
+          // to open in its own program, and there is nothing to keep on screen.
+          downloadBlob(base64ToBlob(fileData.data, fileData.mimeType || 'application/octet-stream'), file.name);
+          toast(`${file.name} can't be shown here — save the copy and open it in its own program`, { icon: infoToastIcon, id: 'file-open-outside' });
           onClose();
           return;
         }

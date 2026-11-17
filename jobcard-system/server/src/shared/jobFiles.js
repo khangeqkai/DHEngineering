@@ -4,11 +4,28 @@
 // read by both the server routes and the client screens that show/upload them,
 // so none of the four can drift out of step with the others.
 
-const ALLOWED_FILE_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.tif', '.bmp', '.gif'];
+// Two kinds of file. A printable one (a PDF or a picture) can be shown inside the
+// app and welded into the combined printout. A stored-only one (a CAD drawing, an
+// office document) is kept in the job's folder and handed back as a download to
+// open in its own program — the app can neither draw it nor print it.
+const PRINTABLE_FILE_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.tif', '.bmp', '.gif'];
+const STORED_ONLY_FILE_EXTENSIONS = [
+  '.dxf', '.dwg', '.step', '.stp', '.iges', '.igs', '.stl',
+  '.doc', '.docx', '.xls', '.xlsx', '.csv', '.txt'
+];
+const ALLOWED_FILE_EXTENSIONS = [...PRINTABLE_FILE_EXTENSIONS, ...STORED_ONLY_FILE_EXTENSIONS];
 
-// 30 MB per uploaded file — big enough for a phone photo, small enough that one
+// Whether a file of this name can be previewed in the app and go in the printout.
+function isPrintableFileName(name) {
+  const text = String(name || '');
+  const dot = text.lastIndexOf('.');
+  return dot > 0 && PRINTABLE_FILE_EXTENSIONS.includes(text.slice(dot).toLowerCase());
+}
+
+// 100 MB per uploaded file — big enough for a 3D model of an assembly or a
+// multi-page colour scan (a phone photo is a few MB), small enough that one
 // upload can't tie up the request thread.
-const MAX_UPLOAD_BYTES = 30 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 // Most files that can go in one combined print packet. The job card itself rides
 // separately and doesn't count toward this.
@@ -22,4 +39,4 @@ const CATEGORY_FOLDER = Object.freeze(Object.assign(Object.create(null), {
   'customer-property-files': 'Customer Property'
 }));
 
-module.exports = { ALLOWED_FILE_EXTENSIONS, MAX_UPLOAD_BYTES, MAX_PRINT_FILES, CATEGORY_FOLDER };
+module.exports = { ALLOWED_FILE_EXTENSIONS, PRINTABLE_FILE_EXTENSIONS, isPrintableFileName, MAX_UPLOAD_BYTES, MAX_PRINT_FILES, CATEGORY_FOLDER };

@@ -11,6 +11,7 @@ import { usePacketPrint } from './usePacketPrint';
 import HubFileRow from './HubFileRow';
 import HubCameraView from './HubCameraView';
 import { ORDER, MAX_PACKET_FILES, keyOf, fileKindLabel, PickCircle } from './paperworkHubHelpers';
+import { isPrintableFileName } from '../../../../server/src/shared/jobFiles';
 import { usePaperworkSelection } from './usePaperworkSelection';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -301,7 +302,9 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
     const isJobFiles = cat === 'job-files';
     const state = sectionState(cat);
     const pickedHere = list.filter(f => selected.has(keyOf(cat, f.name))).length;
-    const canToggleGroup = list.length > 0;
+    // Only PDFs and pictures can go in the printout, so only they are counted here.
+    const printableHere = list.filter(f => isPrintableFileName(f.name)).length;
+    const canToggleGroup = printableHere > 0;
     // The "For:" picker (which part a file belongs to) — both folders drive the
     // missing-attachment warning — only if the job has saved parts to choose from.
     const showOwnerPicker = !locked && assignableParts.length > 0;
@@ -321,7 +324,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
             title={canToggleGroup ? (state === 'all' ? 'Clear this whole group' : 'Pick this whole group') : undefined}
           >
             <span className="hub-group-label">{CATEGORY_LABELS[cat]}</span>
-            {canToggleGroup && <span className="hub-group-meta">{pickedHere}/{list.length}</span>}
+            {canToggleGroup && <span className="hub-group-meta">{pickedHere}/{printableHere}</span>}
           </button>
           <span className="hub-group-spacer" />
           {!locked && (
@@ -344,6 +347,7 @@ function JobPaperworkHub({ jobcardId, jobNumber, onFilesChanged, onPrinted, part
                 nameText={f.displayName || f.name}
                 subText={fileKindLabel(f)}
                 isImage={f.mimeType?.startsWith('image/')}
+                printable={isPrintableFileName(f.name)}
                 thumb={files.thumbnails.get(`${cat}/${f.name}`)}
                 checked={selected.has(keyOf(cat, f.name))}
                 onToggle={() => toggle(cat, f.name)}

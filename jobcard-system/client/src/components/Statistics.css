@@ -179,6 +179,17 @@
   color: var(--text-tertiary);
 }
 
+/* A zero in a statistics table: quiet, so the rows with something in them show. */
+.stat-zero {
+  color: var(--text-tertiary);
+}
+
+/* Money that was billed: the same bold blue the costing sheet gives an amount. */
+.stat-money {
+  font-weight: var(--font-bold);
+  color: var(--accent-text);
+}
+
 .kpi-badge {
   display: inline-flex;
   align-items: center;

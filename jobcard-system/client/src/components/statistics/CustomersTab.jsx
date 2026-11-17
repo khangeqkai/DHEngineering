@@ -6,6 +6,10 @@ import { PRIORITY_LABELS } from '../JobCardList.constants';
 import { formatMoney, pluralize } from '../../utils/formatters';
 import { roundTo } from '../../../../server/src/shared/round';
 
+// A zero is drawn quietly so the customers with something in a column stand out;
+// invoiced money takes the costing sheet's bold blue (.stat-money).
+const quietZero = (value) => (Number(value) ? undefined : 'stat-zero');
+
 // Bar colour class per priority (see Statistics.css) — anything not listed
 // reads as the muted default.
 const PRIORITY_BAR_CLASS = {
@@ -136,7 +140,7 @@ export default function CustomersTab({
                 label: 'Completed',
                 align: 'right',
                 sortable: true,
-                render: (val) => <span>{val} finished</span>
+                render: (val) => <span className={quietZero(val)}>{val} finished</span>
               },
               {
                 key: 'onTimeRate',
@@ -160,7 +164,7 @@ export default function CustomersTab({
                 align: 'right',
                 sortable: true,
                 render: (val, row) => (
-                  <span>{val}% ({row.repeatCount} repeat)</span>
+                  <span className={quietZero(val)}>{val}% ({row.repeatCount} repeat)</span>
                 )
               },
               {
@@ -168,7 +172,7 @@ export default function CustomersTab({
                 label: 'Hours Worked',
                 align: 'right',
                 sortable: true,
-                render: (val) => <span className="stats-mono">{val}h</span>
+                render: (val) => <span className={`stats-mono${Number(val) ? '' : ' stat-zero'}`}>{val}h</span>
               },
               ...(canSeePricing ? [{
                 key: 'invoicedTotal',
@@ -176,7 +180,7 @@ export default function CustomersTab({
                 align: 'right',
                 sortable: true,
                 render: (val) => (
-                  <span>{formatMoney(val)}</span>
+                  <span className={Number(val) ? 'stat-money' : 'stat-zero'}>{formatMoney(val)}</span>
                 )
               }] : [])
             ]}
