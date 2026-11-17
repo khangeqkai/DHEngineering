@@ -7,6 +7,7 @@
   justify-content: center;
   /* No z-index: modalStack inlines this window's layer before first paint. */
   padding: var(--space-4);
+  animation: fadeIn var(--duration-fast) ease-out;
 }
 
 /* Right-sized focused card — fits the content instead of a small column lost in
@@ -22,6 +23,7 @@
   box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
+  animation: modalSlide var(--duration-slow) var(--ease-mechanical);
 }
 
 .stop-timer-form-body {

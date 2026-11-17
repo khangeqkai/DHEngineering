@@ -15,6 +15,8 @@ export default function JobCardListTable({
   sortDir,
   onSort,
   activeTimerJobcardId,
+  changedRowId,
+  onChangedRowShown,
   onOpenJob,
   handleDragStart,
   handleDragEnd,
@@ -80,7 +82,8 @@ export default function JobCardListTable({
             const isPinnedTimer = card.id === activeTimerJobcardId;
             const rowClasses = [
               isOverdue ? 'overdue-row' : '',
-              isPinnedTimer ? 'pinned-timer-row' : ''
+              isPinnedTimer ? 'pinned-timer-row' : '',
+              card.id === changedRowId ? 'row-just-changed' : ''
             ].filter(Boolean).join(' ');
 
             const handleRowClick = (e) => {
@@ -97,7 +100,12 @@ export default function JobCardListTable({
                     <td colSpan={visibleColumns.length}>Your timer is running on this job</td>
                   </tr>
                 )}
-                <tr className={`clickable ${rowClasses}`.trim()} onClick={handleRowClick}>
+                <tr
+                  className={`clickable ${rowClasses}`.trim()}
+                  onClick={handleRowClick}
+                  // The row's own glow ending, not a menu inside it finishing its fade.
+                  onAnimationEnd={(e) => { if (e.target === e.currentTarget) onChangedRowShown(); }}
+                >
                   {visibleColumns.map(col => col.renderCell(card, isOverdue))}
                 </tr>
               </Fragment>

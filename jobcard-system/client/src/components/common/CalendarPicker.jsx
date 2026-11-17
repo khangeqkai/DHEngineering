@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useModalLayer, isTopModal, useFocusWhenTop, anyModalOpenExcept } from './modalStack';
+import { useCloseFade } from './useCloseFade';
 import { todayIsoDate, toIsoDate } from '../../utils/formatters';
 import './CalendarPicker.css';
 
@@ -29,6 +30,7 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose, allow
   // card dialog, registering makes it the top-most layer so the card behind stops
   // trapping Tab and stops closing on Escape meant for the calendar.
   const layer = useModalLayer(modalId, isOpen);
+  const overlayRef = useCloseFade(isOpen);
   // Opened over another window (the job window) the backdrop is lighter, since the
   // two add up; opened from a page (Settings' public holidays) it is the normal one.
   // Read once per opening, after the layer hook has joined the stack.
@@ -134,7 +136,7 @@ export default function CalendarPicker({ isOpen, value, onSelect, onClose, allow
   }
 
   return createPortal(
-    <div className={`calendar-overlay${layered ? ' calendar-overlay--layered' : ''}`} style={{ zIndex: layer }}>
+    <div ref={overlayRef} className={`calendar-overlay${layered ? ' calendar-overlay--layered' : ''}`} style={{ zIndex: layer }}>
       <div
         className="calendar-modal"
         ref={calendarRef}

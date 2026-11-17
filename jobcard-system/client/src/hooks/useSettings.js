@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { validatePassword, todayIsoDate, formatDateTime } from '../utils/formatters';
 import { isManagement, can } from '../utils/roles';
+import { applyTheme } from '../utils/applyTheme';
 import { useFieldErrors, scrollFieldIntoView, showSaveRefusal } from './useFieldErrors';
 import { useConfirmDialog } from './useConfirmDialog';
 import {
@@ -141,11 +142,7 @@ export function useSettings() {
   }, [canManage, loadSettings]);
 
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark-mode');
-    } else {
-      document.documentElement.classList.remove('dark-mode');
-    }
+    applyTheme(darkMode);
     localStorage.setItem('darkMode', darkMode);
   }, [darkMode]);
 

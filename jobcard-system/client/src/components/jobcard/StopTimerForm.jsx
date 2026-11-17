@@ -10,6 +10,7 @@ import Spinner from '../common/Spinner';
 import FieldError from '../common/FieldError';
 import { useFieldErrors, fieldErrorsFromRefusal, scrollFieldIntoView } from '../../hooks/useFieldErrors';
 import { useModalLayer, isTopModal, useFocusWhenTop } from '../common/modalStack';
+import { useCloseFade } from '../common/useCloseFade';
 import { handleDialogKey } from '../common/dialogKeys';
 import './StopTimerForm.css';
 
@@ -141,6 +142,7 @@ export default function StopTimerForm({
   // top-most layer, so the job card behind stops grabbing Tab and focus stays in
   // this form. Without it, Tab between these fields gets yanked back to the card.
   const layer = useModalLayer(modalId, isOpen);
+  const overlayRef = useCloseFade(isOpen);
 
   // The job's own details — just the item and its part position now. Whether the
   // checklist is needed no longer comes from here (see the effect below); a
@@ -364,7 +366,7 @@ export default function StopTimerForm({
   };
 
   return createPortal(
-    <div className="stop-timer-overlay" style={{ zIndex: layer }} role="alertdialog" aria-modal="true" aria-labelledby="stop-timer-title" aria-describedby="stop-timer-desc">
+    <div ref={overlayRef} className="stop-timer-overlay" style={{ zIndex: layer }} role="alertdialog" aria-modal="true" aria-labelledby="stop-timer-title" aria-describedby="stop-timer-desc">
       <div className="stop-timer-form" ref={formRef}>
         <div className="stop-timer-header">
           <div className="stop-timer-header-top">

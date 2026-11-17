@@ -12,6 +12,13 @@
   color: var(--text-secondary);
 }
 
+/* The wait between two screens. It is nearly always over before anyone could see it, so
+   the spinner holds back for a moment and only shows for a wait long enough to notice —
+   otherwise every change of screen opened with a one-frame blink. */
+.loading--late {
+  animation: fadeIn var(--duration-fast) ease-out var(--duration-slow) both;
+}
+
 /* ========================================
    PAGE TRANSITION
    ======================================== */
@@ -34,9 +41,6 @@
 @media (prefers-reduced-motion: reduce) {
   .page-enter {
     animation: none;
-  }
-  div[data-hot-toast] > div {
-    animation: none !important;
   }
 }
 
@@ -957,7 +961,10 @@ select.has-retired option.retired-option {
 }
 
 .table tbody tr:hover {
-  background: rgba(var(--accent-rgb), 0.04);
+  /* One strength on every list. It used to be 4% here, 6% on the admin pages and 8% on
+     the job list, so the row under the mouse was clear on one screen and near-invisible
+     on the next. */
+  background: rgba(var(--accent-rgb), 0.08);
 }
 
 .table tbody tr.clickable {
@@ -1418,7 +1425,7 @@ select.has-retired option.retired-option {
 
 .status-dot.syncing {
   background: var(--primary-accent);
-  animation: pulse-glow 1s ease-in-out infinite;
+  animation: pulse-glow var(--pulse-period) ease-in-out infinite;
 }
 
 .pending-count {
@@ -1461,6 +1468,61 @@ select.has-retired option.retired-option {
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* Every drop-down, picker panel and suggestion list eases in the same way: a quick fade
+   with a small drop into place (a lift, for one that opens upward). They used to snap
+   onto the screen in one frame while the windows around them faded. It moves `translate`,
+   not `transform`, because several of these are already placed with a transform. Listed
+   once, here, so a new menu joins by adding its class to this rule. */
+.status-popover,
+.columns-menu-dropdown,
+.checkbox-dropdown-panel,
+.customer-dropdown,
+.export-dropdown,
+.jc-strip-priority-menu,
+.jc-mention-list,
+.hub-pickmenu,
+.lit-picker-panel,
+.lit-select-menu,
+.te-menu-dropdown {
+  animation: menuIn var(--duration-fast) ease-out;
+}
+
+.status-popover--up {
+  animation-name: menuInUp;
+}
+
+/* A window on its way out (common/useCloseFade.js): the backdrop fades and the window
+   sinks a little, the mirror of how it arrived. Nothing inside it keeps moving, or the
+   window's own opening slide would replay as it is put back on the page to fade. */
+.window-closing {
+  pointer-events: none;
+  animation: windowOut var(--duration-fast) ease-in forwards !important;
+}
+
+.window-closing * {
+  animation: none !important;
+}
+
+.window-closing > * {
+  animation: windowSink var(--duration-fast) ease-in forwards !important;
+}
+
+@keyframes windowOut {
+  to { opacity: 0; }
+}
+
+@keyframes windowSink {
+  to { translate: 0 8px; }
+}
+
+@keyframes menuIn {
+  from { opacity: 0; translate: 0 -4px; }
+}
+
+@keyframes menuInUp {
+  from { opacity: 0; translate: 0 4px; }
 }
 
 .modal-popup {
@@ -1748,6 +1810,7 @@ select.has-retired option.retired-option {
      missing an attachment) can outgrow the window: cap the dialog at the window's
      height and let only the message scroll, so the title and buttons stay reachable. */
   max-height: calc(100vh - 2 * var(--space-6));
+  animation: modalSlide var(--duration-slow) var(--ease-mechanical);
   display: flex;
   flex-direction: column;
 }
@@ -1821,14 +1884,6 @@ select.has-retired option.retired-option {
   box-shadow: var(--glow-accent);
 }
 
-/* Table row hover tint uses the same unified accent, at low alpha */
-.page-contacts .table tbody tr:hover,
-.page-suppliers .table tbody tr:hover,
-.page-users .table tbody tr:hover,
-.page-equipment .table tbody tr:hover,
-.page-activity .table tbody tr:hover {
-  background: rgba(var(--accent-rgb), 0.06);
-}
 
 /* ========================================
    RESPONSIVE SIDEBAR
@@ -2202,11 +2257,10 @@ select.has-retired option.retired-option {
    TOAST NOTIFICATIONS
    ======================================== */
 
-/* Custom toast entrance: slide in from right */
-div[data-hot-toast] > div {
-  animation: toastSlideIn var(--duration-slow) var(--ease-mechanical) both !important;
-}
-
+/* A message slides in from the right edge and leaves the same way. The two keyframes are
+   named from App.jsx, on the message itself: the library sets its own drop-in there, and
+   only something set in the same place replaces it. (An earlier rule here aimed at a
+   marker the library never puts on the page, so the slide never ran.) */
 @keyframes toastSlideIn {
   from {
     transform: translateX(100%);
@@ -2215,6 +2269,17 @@ div[data-hot-toast] > div {
   to {
     transform: translateX(0);
     opacity: 1;
+  }
+}
+
+@keyframes toastSlideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
   }
 }
 

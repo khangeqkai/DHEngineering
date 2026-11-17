@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { useModalLayer, isTopModal, useFocusWhenTop, anyModalOpenExcept } from './modalStack';
 import { handleDialogKey } from './dialogKeys';
+import { useCloseFade } from './useCloseFade';
 
 export default function ConfirmDialog({
   isOpen,
@@ -23,6 +24,7 @@ export default function ConfirmDialog({
   const modalId = useId();
   // Registers as the (now) top-most dialog while open, and takes its drawing layer.
   const layer = useModalLayer(modalId, isOpen, { pinnedLayer });
+  const overlayRef = useCloseFade(isOpen);
   // Opened over another window (the job window, the attention window): a lighter backdrop,
   // since the two add up. Read once per opening, after the layer hook has joined the stack.
   const [layered, setLayered] = useState(false);
@@ -61,6 +63,7 @@ export default function ConfirmDialog({
 
   return createPortal(
     <div
+      ref={overlayRef}
       className={`confirm-dialog-overlay${layered ? ' confirm-dialog-overlay--layered' : ''}`}
       style={{ zIndex: layer }}
       role="alertdialog"

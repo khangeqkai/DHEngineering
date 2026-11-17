@@ -342,6 +342,11 @@
   --duration-fast: 150ms;
   --duration-normal: 200ms;
   --duration-slow: 350ms;
+  /* The one beat every pulsing signal shares (a running clock, a file still missing,
+     saving). Each used to keep its own period — 1s, 1.1s, 1.5s, 1.6s — so a busy job
+     list shimmered out of step. Action Required's rainbow is a drift, not a pulse, and
+     keeps its own. */
+  --pulse-period: 1.6s;
 
   /* Layers on the page — what floats over what. Windows are NOT on this list:
      the modal stack (common/modalStack.js) hands each one a layer from 1100 up
@@ -382,11 +387,14 @@
      so a glance at the list says which stage a job is in; the words say
      which status inside the group.
        pink    = quoting      (To be Quoted pink, Quote Sent fuchsia)
-       blue / amber / green = workshop (Open, In Progress, Done — kept
-                 apart because they are the shop floor's everyday three)
+       indigo / amber / green = workshop (Open, In Progress, Done — kept
+                 apart because they are the shop floor's everyday three;
+                 Open is indigo, not the app's own blue, so the pill is never
+                 mistaken for a link or a button)
        violet  = on hold      (all five reasons; the words name the reason)
-       cyan / teal = finishing (Ready to Collect cyan; the office's costing
-                 and billing steps teal)
+       sky / teal = finishing (Ready to Collect sky blue; the office's costing
+                 and billing steps teal — cyan sat too close to the teal to tell
+                 the two apart down a list)
        grey    = Paid – Archived (filed away — the only grey)
        Action Required has no fixed colour: it drifts (App.css). */
 
@@ -402,11 +410,11 @@
   --status-quote-sent-border: rgba(192, 38, 211, 0.28);
   --status-quote-sent-dot: #c026d3;
 
-  /* Workshop — accepted, queued (blue) */
-  --status-open-bg: rgba(59, 130, 246, 0.10);
-  --status-open-text: #1d4ed8;
-  --status-open-border: rgba(59, 130, 246, 0.28);
-  --status-open-dot: #3b82f6;
+  /* Workshop — accepted, queued (indigo) */
+  --status-open-bg: rgba(99, 102, 241, 0.10);
+  --status-open-text: #4338ca;
+  --status-open-border: rgba(99, 102, 241, 0.30);
+  --status-open-dot: #6366f1;
 
   /* Workshop — being worked right now (amber, the one "live" colour) */
   --status-in-progress-bg: rgba(245, 158, 11, 0.14);
@@ -426,11 +434,11 @@
   --status-hold-border: rgba(139, 92, 246, 0.32);
   --status-hold-dot: #8b5cf6;
 
-  /* Finishing — ready to collect or deliver (cyan) */
-  --status-ready-bg: rgba(6, 182, 212, 0.12);
-  --status-ready-text: #0e7490;
-  --status-ready-border: rgba(6, 182, 212, 0.30);
-  --status-ready-dot: #06b6d4;
+  /* Finishing — ready to collect or deliver (sky blue) */
+  --status-ready-bg: rgba(14, 165, 233, 0.12);
+  --status-ready-text: #0369a1;
+  --status-ready-border: rgba(14, 165, 233, 0.32);
+  --status-ready-dot: #0ea5e9;
 
   /* Finishing — the office's costing and billing steps (teal) */
   --status-billing-bg: rgba(20, 184, 166, 0.12);
@@ -501,11 +509,8 @@
 
   --text-on-saturated: #fff;
 
-  /* Sidebar */
-  --sidebar-bg: #060e1c;
-  --sidebar-bg-elevated: #0b1e36;
-  --sidebar-active-bg: #2563eb;
-  --sidebar-active-text: #ffffff;
+  /* The sidebar takes no dark values: it is the same navy in both themes (see :root).
+     It used to drop to the dark page's own colour here, and vanished into the page. */
 
   /* Surfaces — rich dark navy layers */
   --background: #060e1c;
@@ -562,7 +567,7 @@
 
   /* Job status colors — semantic lifecycle palette (Dark mode).
      Same families as light: pink quoting, blue/amber/green workshop,
-     violet on hold, cyan/teal finishing, grey archived. */
+     violet on hold, sky/teal finishing, grey archived. */
 
   /* Quoting — waiting on a quote (pink) */
   --status-quote-bg: rgba(236, 72, 153, 0.20);
@@ -577,10 +582,10 @@
   --status-quote-sent-dot: #e879f9;
 
   /* Workshop — queued */
-  --status-open-bg: rgba(59, 130, 246, 0.18);
-  --status-open-text: #93c5fd;
-  --status-open-border: rgba(59, 130, 246, 0.32);
-  --status-open-dot: #60a5fa;
+  --status-open-bg: rgba(99, 102, 241, 0.20);
+  --status-open-text: #a5b4fc;
+  --status-open-border: rgba(99, 102, 241, 0.36);
+  --status-open-dot: #818cf8;
 
   /* Workshop — being worked right now (amber, the one "live" colour) */
   --status-in-progress-bg: rgba(245, 158, 11, 0.22);
@@ -600,11 +605,11 @@
   --status-hold-border: rgba(139, 92, 246, 0.36);
   --status-hold-dot: #a78bfa;
 
-  /* Finishing — ready to collect or deliver (cyan) */
-  --status-ready-bg: rgba(6, 182, 212, 0.20);
-  --status-ready-text: #67e8f9;
-  --status-ready-border: rgba(6, 182, 212, 0.34);
-  --status-ready-dot: #22d3ee;
+  /* Finishing — ready to collect or deliver (sky blue) */
+  --status-ready-bg: rgba(14, 165, 233, 0.20);
+  --status-ready-text: #7dd3fc;
+  --status-ready-border: rgba(14, 165, 233, 0.34);
+  --status-ready-dot: #38bdf8;
 
   /* Finishing — costing and billing (teal) */
   --status-billing-bg: rgba(20, 184, 166, 0.20);
@@ -819,6 +824,13 @@ a:hover {
    for decorative motion, but anything that's a status signal rather than
    decoration (the loading spinner) deliberately overrides it with its own
    !important rule, because that motion is the information, not flourish. */
+/* Switching between the light and dark looks cross-fades (utils/applyTheme.js): this is
+   how long the old look takes to fade into the new one. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--duration-normal);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

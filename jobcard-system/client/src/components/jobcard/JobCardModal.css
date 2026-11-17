@@ -99,7 +99,7 @@
   --p-bg: rgba(59, 130, 246, 0.08);
   --p-color: var(--badge-progress-text);
   --p-border: #93c5fd;
-  --p-dot: var(--status-open-dot);
+  --p-dot: var(--info-color);
 }
 .jc-strip-priority-medium {
   --p-bg: rgba(217, 119, 6, 0.10);
@@ -231,7 +231,7 @@
 }
 
 .jc-strip-priority-menu-item-none .jc-strip-priority-dot { background: var(--text-tertiary); }
-.jc-strip-priority-menu-item-low .jc-strip-priority-dot { background: var(--status-open-dot); }
+.jc-strip-priority-menu-item-low .jc-strip-priority-dot { background: var(--info-color); }
 .jc-strip-priority-menu-item-medium .jc-strip-priority-dot { background: var(--warning-hover); }
 .jc-strip-priority-menu-item-high .jc-strip-priority-dot { background: var(--danger-color); }
 .jc-strip-priority-menu-item-same-day .jc-strip-priority-dot { background: var(--same-day-bg); box-shadow: 0 0 0 2px var(--same-day-border); }
@@ -1559,7 +1559,7 @@
 }
 .lip-pill--started .lip-pill-dot {
   background: var(--warning-color);
-  animation: timer-pulse 1.5s ease-in-out infinite;
+  animation: timer-pulse var(--pulse-period) ease-in-out infinite;
 }
 .lip-pill--active {
   color: var(--success-ink);
@@ -1567,7 +1567,7 @@
   border-color: color-mix(in srgb, var(--success-color) 32%, transparent);
 }
 .lip-pill--active .lip-pill-dot {
-  animation: timer-pulse 1.5s ease-in-out infinite;
+  animation: timer-pulse var(--pulse-period) ease-in-out infinite;
 }
 .lip-pill--partial {
   color: var(--accent-text);
@@ -2032,7 +2032,7 @@
   height: 7px;
   border-radius: 50%;
   background: var(--success-color);
-  animation: timer-pulse 1.5s ease-in-out infinite;
+  animation: timer-pulse var(--pulse-period) ease-in-out infinite;
 }
 
 /* Card base */
@@ -3356,4 +3356,11 @@
 .jc-lock-fieldset {
   all: unset;
   display: contents;
+}
+
+/* Switching between Details and Costing: the incoming tab fades in rather than swapping
+   in one frame. Opacity only — a transform here would become the anchor for every
+   fixed-position pop-up inside the tab and throw them off. */
+.jc-zoom-root > .modal-form-grid {
+  animation: fadeIn var(--duration-fast) ease-out;
 }

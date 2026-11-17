@@ -202,6 +202,11 @@ export default function JobCardList() {
     }
   };
 
+  // The row whose status was just changed from the list: it glows for a moment so the
+  // change is seen to have landed, not just a small pill quietly swapping colour.
+  const [changedRowId, setChangedRowId] = useState(null);
+  const clearChangedRow = useCallback(() => setChangedRowId(null), []);
+
   const handleQuickStatusChange = useCallback(async (cardId, newStatus) => {
     setStatusPopoverId(null);
     // The list has no costing access, so it never has a fresh total or unsaved
@@ -231,6 +236,7 @@ export default function JobCardList() {
           ? { ...c, status: updated.status, previousStatus: updated.previousStatus, updatedAt: updated.updatedAt, updatedBy: updated.updatedBy }
           : c
         ));
+        setChangedRowId(cardId);
         refreshMissingFiles([cardId]);
       },
       onFailed: loadJobcards
@@ -605,6 +611,8 @@ export default function JobCardList() {
                 sortDir={sortDir}
                 onSort={handleSort}
                 activeTimerJobcardId={activeTimerJobcardId}
+                changedRowId={changedRowId}
+                onChangedRowShown={clearChangedRow}
                 onOpenJob={openEditModal}
                 handleDragStart={handleDragStart}
                 handleDragEnd={handleDragEnd}

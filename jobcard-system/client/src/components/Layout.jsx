@@ -3,6 +3,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth, useInactivityCountdown } from '../context/AuthContext';
 import { isManagement, can } from '../utils/roles';
+import { applyTheme } from '../utils/applyTheme';
 import InactivityWarningModal from './common/InactivityWarningModal';
 import Spinner from './common/Spinner';
 import dhLogo from '../assets/dh-logo.png';
@@ -65,12 +66,7 @@ export default function Layout() {
   }, [sidebarCollapsed]);
 
   useEffect(() => {
-    // Apply dark mode
-    if (darkMode) {
-      document.documentElement.classList.add('dark-mode');
-    } else {
-      document.documentElement.classList.remove('dark-mode');
-    }
+    applyTheme(darkMode);
     localStorage.setItem('darkMode', darkMode);
   }, [darkMode]);
 
@@ -304,7 +300,7 @@ export default function Layout() {
         {/* The screens under this shell are loaded on demand, so the wait belongs
             here rather than above the whole app — the sidebar and header stay put
             while the next screen arrives, instead of the window blanking out. */}
-        <Suspense fallback={<div className="loading"><Spinner size={24} /></div>}>
+        <Suspense fallback={<div className="loading loading--late"><Spinner size={24} /></div>}>
           <Outlet />
         </Suspense>
       </main>

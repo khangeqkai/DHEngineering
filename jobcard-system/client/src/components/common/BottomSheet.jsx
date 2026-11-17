@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useModalLayer, isTopModal, useFocusWhenTop } from './modalStack';
 import { handleDialogTab } from './dialogKeys';
+import { useCloseFade } from './useCloseFade';
 
 // Selector for elements that can receive keyboard focus via Tab.
 const FOCUSABLE_SELECTOR =
@@ -68,6 +69,8 @@ export default function BottomSheet({
 
   // Joins the shared modal stack while open and takes its drawing layer.
   const layer = useModalLayer(modalId, isOpen);
+  // Fades the window out as it closes (it opens with a fade already).
+  const overlayRef = useCloseFade(isOpen);
 
   // Move focus into the dialog so the first Tab lands on a real field
   // rather than the close button (first in the DOM) or the page behind.
@@ -132,7 +135,7 @@ export default function BottomSheet({
   );
 
   return createPortal(
-    <div className="modal-overlay" style={{ zIndex: layer }}>
+    <div ref={overlayRef} className="modal-overlay" style={{ zIndex: layer }}>
       {aside ? (
         <div ref={rowRef} className="modal-row">
           {aside}

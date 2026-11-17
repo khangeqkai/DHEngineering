@@ -232,7 +232,7 @@
   height: 6px;
   border-radius: 50%;
   background: var(--fill-success);
-  animation: timer-pulse 1.6s ease-in-out infinite;
+  animation: timer-pulse var(--pulse-period) ease-in-out infinite;
 }
 
 @keyframes timer-pulse {
@@ -284,7 +284,7 @@
   background: var(--text-secondary);
   opacity: 0.35;
   vertical-align: middle;
-  animation: attachment-pending-pulse 1.1s ease-in-out infinite;
+  animation: attachment-pending-pulse var(--pulse-period) ease-in-out infinite;
 }
 
 @keyframes attachment-pending-pulse {
@@ -896,8 +896,14 @@ th.jc-align-center { text-align: center; }
   cursor: pointer;
 }
 
-.jc-table-scroll .table tbody tr.clickable:hover {
-  background: rgba(var(--accent-rgb), 0.08);
+/* The row whose status was just changed from the list glows green and settles back to
+   whatever it was (plain, overdue, pinned). */
+.table tbody tr.row-just-changed {
+  animation: row-just-changed 1.6s ease-out; /* token-exempt: how long the glow lasts — a signal, not a transition */
+}
+
+@keyframes row-just-changed {
+  from { background-color: rgba(var(--success-rgb), 0.24); }
 }
 
 /* Label above the job whose timer the signed-in person has running. */

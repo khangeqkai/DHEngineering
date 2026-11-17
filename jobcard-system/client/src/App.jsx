@@ -25,6 +25,11 @@ const Settings = lazy(() => import('./components/Settings'));
 const SearchPage = lazy(() => import('./components/SearchPage'));
 const Statistics = lazy(() => import('./components/Statistics'));
 
+// How a pop-up message arrives and leaves (keyframes in App.css). Set on the message
+// itself because that is where the library puts its own drop-in.
+const TOAST_IN = 'toastSlideIn var(--duration-slow) var(--ease-mechanical) both';
+const TOAST_OUT = 'toastSlideOut var(--duration-normal) ease-in forwards';
+
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
 
@@ -109,7 +114,7 @@ function App() {
         }}
       >
         {(t) => (
-          <ToastBar toast={t}>
+          <ToastBar toast={t} style={{ animation: t.visible ? TOAST_IN : TOAST_OUT }}>
             {({ icon, message }) => (
               <div
                 onClick={() => toast.dismiss(t.id)}
@@ -129,7 +134,7 @@ function App() {
           </ToastBar>
         )}
       </Toaster>
-      <Suspense fallback={<div className="loading"><Spinner size={24} /></div>}>
+      <Suspense fallback={<div className="loading loading--late"><Spinner size={24} /></div>}>
         <Routes>
         <Route path="/login" element={<SignedOutRoute><Login /></SignedOutRoute>} />
         <Route

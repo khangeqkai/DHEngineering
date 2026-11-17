@@ -9,6 +9,7 @@
   align-items: center;
   justify-content: center;
   /* No z-index: modalStack inlines this window's layer before first paint. */
+  animation: fadeIn var(--duration-fast) ease-out;
 }
 
 .calendar-overlay--layered {
@@ -22,6 +23,7 @@
   border-radius: var(--radius-xl);
   padding: var(--space-6);
   box-shadow: var(--shadow-lg);
+  animation: modalSlide var(--duration-slow) var(--ease-mechanical);
   /* A fixed min-width overflowed a 320px-wide phone before its own padding was even
      counted. `.calendar-overlay` centers this with no side gutter, so 100% of it is
      the full viewport width — the picker keeps its usual 360px on every viewport that
